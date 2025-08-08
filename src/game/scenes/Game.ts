@@ -57,11 +57,11 @@ export class Game extends Scene
             this.platforms = layer;
         }
 
-        // 创建玩家
-        this.player = new Player(this, 100, 100);
+        // 创建玩家（起点在左下角）
+        this.player = new Player(this, 150, 1050);
         
-        // 创建终点旗帜（放在地图的右边较高的平台上）
-        this.flag = new Flag(this, 1500, 200);
+        // 创建终点旗帜（放在右上角的平台上）
+        this.flag = new Flag(this, 1400, 130);
 
         // 添加玩家与平台的碰撞
         if (this.platforms) {
