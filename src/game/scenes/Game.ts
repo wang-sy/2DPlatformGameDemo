@@ -45,7 +45,6 @@ export class Game extends Scene
         const spikesSet = this.map.addTilesetImage('spikes', 'spikes');
         const coinSet = this.map.addTilesetImage('coin', 'coin');
         const keySet = this.map.addTilesetImage('key', 'key');
-        const frogSet = this.map.addTilesetImage('frog', 'frog');
         
         // 创建spike组、coin组和frog组
         this.spikesGroup = this.physics.add.staticGroup();
@@ -53,7 +52,7 @@ export class Game extends Scene
         this.frogsGroup = this.physics.add.group();
 
         // 创建图层 - 使用所有tilesets
-        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!, keySet!, frogSet!];
+        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!, keySet!];
         const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
         
         if (layer) {
@@ -77,18 +76,26 @@ export class Game extends Scene
                     this.keyObject = new Key(this, tile.pixelX + 32, tile.pixelY + 32);
                     // 移除原来的tile
                     layer.removeTileAt(tile.x, tile.y);
-                } else if (tile.index === 6) { // frog tile
-                    // 创建frog对象替换tile
-                    const frog = new Frog(this, tile.pixelX + 32, tile.pixelY + 32);
-                    this.frogsGroup.add(frog);
-                    // 移除原来的tile
-                    layer.removeTileAt(tile.x, tile.y);
                 }
             });
             
             // 设置碰撞 - tiles 1和2是平台
             layer.setCollision([1, 2]); // 草地块
             this.platforms = layer;
+        }
+
+        // 从 object layer 创建对象
+        const objectLayer = this.map.getObjectLayer('Objects');
+        if (objectLayer) {
+            objectLayer.objects.forEach((obj: any) => {
+                if (obj.type === 'enemy' && obj.name === 'frog') {
+                    // 创建青蛙敌人
+                    // Tiled 对象的坐标: x 是左边缘，y 是上边缘（当 gid=0 时）
+                    // 我们需要将青蛙放在对象中心
+                    const frog = new Frog(this, obj.x + obj.width / 2, obj.y + obj.height / 2);
+                    this.frogsGroup.add(frog);
+                }
+            });
         }
 
         // 创建玩家（起点在左下角）
