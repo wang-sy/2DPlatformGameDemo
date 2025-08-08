@@ -1,0 +1,39 @@
+{
+    "name": "frog",
+    "type": "character",
+    "image_filename": "frog.png",
+    "atlas_json_name": "frog.json",
+    "frame_size": {
+        "width": 64,
+        "height": 64
+    },
+    "animations": [
+        {
+            "name": "idle",
+            "filename_prefix": "idle/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "jump",
+            "filename_prefix": "jump/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "rest",
+            "filename_prefix": "rest/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        }
+    ]
+}

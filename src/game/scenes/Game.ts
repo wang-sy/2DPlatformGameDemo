@@ -4,6 +4,7 @@ import { Spike } from '../objects/spike/Spike';
 import { Flag } from '../objects/flag/Flag';
 import { Coin } from '../objects/coin/Coin';
 import { Key } from '../objects/key/Key';
+import { Frog } from '../objects/enemy/Frog';
 
 export class Game extends Scene
 {
@@ -13,6 +14,7 @@ export class Game extends Scene
     platforms: Phaser.Tilemaps.TilemapLayer | null = null;
     spikesGroup: Phaser.Physics.Arcade.StaticGroup;
     coinsGroup: Phaser.Physics.Arcade.StaticGroup;
+    frogsGroup: Phaser.Physics.Arcade.Group;
     keyObject: Key | null = null;
     map: Phaser.Tilemaps.Tilemap | null = null;
     healthText: Phaser.GameObjects.Text;
@@ -43,13 +45,15 @@ export class Game extends Scene
         const spikesSet = this.map.addTilesetImage('spikes', 'spikes');
         const coinSet = this.map.addTilesetImage('coin', 'coin');
         const keySet = this.map.addTilesetImage('key', 'key');
+        const frogSet = this.map.addTilesetImage('frog', 'frog');
         
-        // 创建spike组和coin组
+        // 创建spike组、coin组和frog组
         this.spikesGroup = this.physics.add.staticGroup();
         this.coinsGroup = this.physics.add.staticGroup();
+        this.frogsGroup = this.physics.add.group();
 
         // 创建图层 - 使用所有tilesets
-        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!, keySet!];
+        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!, keySet!, frogSet!];
         const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
         
         if (layer) {
@@ -73,6 +77,12 @@ export class Game extends Scene
                     this.keyObject = new Key(this, tile.pixelX + 32, tile.pixelY + 32);
                     // 移除原来的tile
                     layer.removeTileAt(tile.x, tile.y);
+                } else if (tile.index === 6) { // frog tile
+                    // 创建frog对象替换tile
+                    const frog = new Frog(this, tile.pixelX + 32, tile.pixelY + 32);
+                    this.frogsGroup.add(frog);
+                    // 移除原来的tile
+                    layer.removeTileAt(tile.x, tile.y);
                 }
             });
             
@@ -83,6 +93,7 @@ export class Game extends Scene
 
         // 创建玩家（起点在左下角）
         this.player = new Player(this, 150, 1050);
+        this.player.setName('player');
         
         // 创建终点旗帜（放在右上角的平台上）
         this.flag = new Flag(this, 1400, 130);
@@ -90,10 +101,15 @@ export class Game extends Scene
         // 添加玩家与平台的碰撞
         if (this.platforms) {
             this.physics.add.collider(this.player, this.platforms);
+            // 添加青蛙与平台的碰撞
+            this.physics.add.collider(this.frogsGroup, this.platforms);
         }
 
         // 添加玩家与尖刺的碰撞
         this.physics.add.overlap(this.player, this.spikesGroup, this.handleSpikeCollision, undefined, this);
+        
+        // 添加玩家与青蛙的碰撞
+        this.physics.add.overlap(this.player, this.frogsGroup, this.handleFrogCollision, undefined, this);
         
         // 添加玩家与金币的碰撞
         this.physics.add.overlap(this.player, this.coinsGroup, this.handleCoinCollect, undefined, this);
@@ -181,6 +197,30 @@ export class Game extends Scene
         if (spikeObj.canDealDamage()) {
             this.player.takeDamage(spikeObj.getDamageAmount());
             spikeObj.onPlayerHit();
+        }
+    }
+
+    private handleFrogCollision(player: any, frog: any): void {
+        const frogObj = frog as Frog;
+        const playerVelocityY = this.player.body?.velocity.y || 0;
+        
+        // 检查玩家是否从上方踩到青蛙
+        if (playerVelocityY > 0 && this.player.y < frogObj.y - 20) {
+            // 玩家踩死青蛙
+            frogObj.takeDamage();
+            // 让玩家弹起
+            this.player.setVelocityY(-300);
+        } else if (frogObj.canDealDamage()) {
+            // 青蛙伤害玩家
+            this.player.takeDamage(frogObj.getDamageAmount());
+            frogObj.onPlayerHit();
+            
+            // 弹开玩家
+            const angle = Phaser.Math.Angle.Between(frogObj.x, frogObj.y, this.player.x, this.player.y);
+            this.player.setVelocity(
+                Math.cos(angle) * 200,
+                Math.sin(angle) * 200 - 100
+            );
         }
     }
 
@@ -355,6 +395,13 @@ export class Game extends Scene
     {
         if (this.flag && !this.flag.isReached()) {
             this.player.update();
+            
+            // 更新所有青蛙
+            this.frogsGroup.children.entries.forEach((frog: any) => {
+                if (frog.active) {
+                    frog.update();
+                }
+            });
         }
     }
 }

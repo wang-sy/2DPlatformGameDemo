@@ -33,6 +33,7 @@ export class Preloader extends Scene
         this.load.setPath('assets');
         
         this.load.atlas('player', 'player/character_purple.png', 'player/character_purple.json');
+        this.load.atlas('frog', 'enemy/frog.png', 'enemy/frog.json');
         this.load.image('platform', 'bg.png');
         
         // Load tilemap
