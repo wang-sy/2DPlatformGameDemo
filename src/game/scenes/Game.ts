@@ -2,6 +2,7 @@ import { Scene } from 'phaser';
 import { Player } from '../objects/player/Player';
 import { Spike } from '../objects/spike/Spike';
 import { Flag } from '../objects/flag/Flag';
+import { Coin } from '../objects/coin/Coin';
 
 export class Game extends Scene
 {
@@ -10,10 +11,14 @@ export class Game extends Scene
     player: Player;
     platforms: Phaser.Tilemaps.TilemapLayer | null = null;
     spikesGroup: Phaser.Physics.Arcade.StaticGroup;
+    coinsGroup: Phaser.Physics.Arcade.StaticGroup;
     map: Phaser.Tilemaps.Tilemap | null = null;
     healthText: Phaser.GameObjects.Text;
+    coinText: Phaser.GameObjects.Text;
     flag: Flag;
     victoryText: Phaser.GameObjects.Text;
+    score: number = 0;
+    totalCoins: number = 0;
 
     constructor ()
     {
@@ -32,21 +37,30 @@ export class Game extends Scene
         const terrainCenter = this.map.addTilesetImage('terrain_grass_block_center', 'terrain_grass_block_center');
         const terrainTop = this.map.addTilesetImage('terrain_grass_block_top', 'terrain_grass_block_top');
         const spikesSet = this.map.addTilesetImage('spikes', 'spikes');
+        const coinSet = this.map.addTilesetImage('coin', 'coin');
         
-        // 创建spike组
+        // 创建spike组和coin组
         this.spikesGroup = this.physics.add.staticGroup();
+        this.coinsGroup = this.physics.add.staticGroup();
 
-        // 创建图层 - 只使用地形tilesets
-        const terrainTilesets = [terrainCenter!, terrainTop!];
-        const layer = this.map.createLayer('Level1', [terrainCenter!, terrainTop!, spikesSet!], 0, 0);
+        // 创建图层 - 使用所有tilesets
+        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!];
+        const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
         
         if (layer) {
-            // 遍历tilemap，找到所有spike tiles (tile ID 3)
+            // 遍历tilemap，找到所有spike tiles (tile ID 3) 和 coin tiles (tile ID 4)
             layer.forEachTile((tile) => {
                 if (tile.index === 3) { // spike tile
                     // 创建spike对象替换tile
                     const spike = new Spike(this, tile.pixelX + 32, tile.pixelY + 32);
                     this.spikesGroup.add(spike);
+                    // 移除原来的tile
+                    layer.removeTileAt(tile.x, tile.y);
+                } else if (tile.index === 4) { // coin tile
+                    // 创建coin对象替换tile
+                    const coin = new Coin(this, tile.pixelX + 32, tile.pixelY + 32);
+                    this.coinsGroup.add(coin);
+                    this.totalCoins++;
                     // 移除原来的tile
                     layer.removeTileAt(tile.x, tile.y);
                 }
@@ -70,6 +84,9 @@ export class Game extends Scene
 
         // 添加玩家与尖刺的碰撞
         this.physics.add.overlap(this.player, this.spikesGroup, this.handleSpikeCollision, undefined, this);
+        
+        // 添加玩家与金币的碰撞
+        this.physics.add.overlap(this.player, this.coinsGroup, this.handleCoinCollect, undefined, this);
         
         // 添加玩家与终点的碰撞
         this.physics.add.overlap(this.player, this.flag, this.handleFlagReached, undefined, this);
@@ -105,6 +122,16 @@ export class Game extends Scene
         this.healthText.setScrollFactor(0); // 固定在屏幕上
         this.updateHealthUI(this.player.getHealth());
         
+        // 创建金币计数显示
+        this.coinText = this.add.text(16, 56, '', {
+            fontSize: '28px',
+            color: '#ffff00',
+            stroke: '#000000',
+            strokeThickness: 4
+        });
+        this.coinText.setScrollFactor(0);
+        this.updateCoinUI();
+        
         // 创建胜利文本（初始隐藏）
         this.victoryText = this.add.text(512, 300, 'VICTORY!', {
             fontSize: '72px',
@@ -123,11 +150,29 @@ export class Game extends Scene
         this.healthText.setText(hearts + emptyHearts);
     }
 
+    private updateCoinUI(): void {
+        this.coinText.setText(`🪙 ${this.score}/${this.totalCoins}`);
+    }
+
     private handleSpikeCollision(player: any, spike: any): void {
         const spikeObj = spike as Spike;
         if (spikeObj.canDealDamage()) {
             this.player.takeDamage(spikeObj.getDamageAmount());
             spikeObj.onPlayerHit();
+        }
+    }
+
+    private handleCoinCollect(player: any, coin: any): void {
+        const coinObj = coin as Coin;
+        if (!coinObj.isCollected()) {
+            coinObj.collect();
+            this.score += coinObj.getValue();
+            this.updateCoinUI();
+            
+            // 如果收集了所有金币，给予额外奖励
+            if (this.score === this.totalCoins) {
+                this.showAllCoinsCollectedBonus();
+            }
         }
     }
 
@@ -139,10 +184,41 @@ export class Game extends Scene
         }
     }
     
+    private showAllCoinsCollectedBonus(): void {
+        // 显示完美收集提示
+        const bonusText = this.add.text(512, 200, 'PERFECT! All Coins Collected!', {
+            fontSize: '36px',
+            color: '#ffff00',
+            stroke: '#000000',
+            strokeThickness: 6
+        });
+        bonusText.setOrigin(0.5);
+        bonusText.setScrollFactor(0);
+        
+        // 动画效果
+        this.tweens.add({
+            targets: bonusText,
+            scale: { from: 0, to: 1.2 },
+            alpha: { from: 1, to: 0 },
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => {
+                bonusText.destroy();
+            }
+        });
+        
+        // 给玩家加满血作为奖励
+        this.player.heal(3);
+    }
+    
     private onVictory(): void {
         // 停止玩家控制
         this.player.body!.enable = false;
         this.player.setVelocity(0, 0);
+        
+        // 更新胜利文本，显示金币收集情况
+        const perfectBonus = this.score === this.totalCoins ? '\n⭐ PERFECT! ⭐' : '';
+        this.victoryText.setText(`VICTORY!\n🪙 ${this.score}/${this.totalCoins}${perfectBonus}`);
         
         // 显示胜利文本
         this.victoryText.setVisible(true);

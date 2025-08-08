@@ -43,6 +43,7 @@ export class Preloader extends Scene
         this.load.image('terrain_grass_block_top', 'tilemap/tiles/terrain_grass_block_top.png');
         this.load.image('spikes', 'tilemap/tiles/spikes.png');
         this.load.image('flag', 'tilemap/tiles/flag_green_a.png');
+        this.load.image('coin', 'tilemap/tiles/coin_gold.png');
     }
 
     create ()
