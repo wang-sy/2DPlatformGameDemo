@@ -386,6 +386,18 @@
             "width": 64,
             "x": 704,
             "y": 448
+          },
+          {
+            "gid": 0,
+            "height": 64,
+            "id": 30,
+            "name": "flag",
+            "rotation": 0,
+            "type": "goal",
+            "visible": true,
+            "width": 64,
+            "x": 1368,
+            "y": 98
           }
         ],
         "opacity": 1,
@@ -396,7 +408,7 @@
       }
     ],
     "nextlayerid": 6,
-    "nextobjectid": 30,
+    "nextobjectid": 31,
     "orientation": "orthogonal",
     "renderorder": "right-down",
     "tiledversion": "1.2.2",

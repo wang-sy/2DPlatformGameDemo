@@ -20,7 +20,7 @@ export class Game extends Scene
     healthText: Phaser.GameObjects.Text;
     coinText: Phaser.GameObjects.Text;
     keyIcon: Phaser.GameObjects.Image;
-    flag: Flag;
+    flag: Flag | null = null;
     victoryText: Phaser.GameObjects.Text;
     score: number = 0;
     totalCoins: number = 0;
@@ -82,6 +82,9 @@ export class Game extends Scene
                     // 创建尖刺
                     const spike = new Spike(this, x, y);
                     this.spikesGroup.add(spike);
+                } else if (obj.type === 'goal' && obj.name === 'flag') {
+                    // 创建终点旗帜
+                    this.flag = new Flag(this, x, y);
                 }
             });
         }
@@ -89,9 +92,6 @@ export class Game extends Scene
         // 创建玩家（起点在左下角）
         this.player = new Player(this, 150, 1050);
         this.player.setName('player');
-        
-        // 创建终点旗帜（放在右上角的平台上）
-        this.flag = new Flag(this, 1400, 130);
 
         // 添加玩家与平台的碰撞
         if (this.platforms) {
@@ -115,7 +115,9 @@ export class Game extends Scene
         }
         
         // 添加玩家与终点的碰撞
-        this.physics.add.overlap(this.player, this.flag, this.handleFlagReached, undefined, this);
+        if (this.flag) {
+            this.physics.add.overlap(this.player, this.flag, this.handleFlagReached, undefined, this);
+        }
 
         // 设置相机跟随和边界
         const mapWidth = this.map.widthInPixels;
