@@ -39,46 +39,20 @@ export class Game extends Scene
         // 创建tilemap
         this.map = this.make.tilemap({ key: 'tilemap' });
         
-        // 添加tilesets到map
+        // 添加tilesets到map（现在只需要地形tiles）
         const terrainCenter = this.map.addTilesetImage('terrain_grass_block_center', 'terrain_grass_block_center');
         const terrainTop = this.map.addTilesetImage('terrain_grass_block_top', 'terrain_grass_block_top');
-        const spikesSet = this.map.addTilesetImage('spikes', 'spikes');
-        const coinSet = this.map.addTilesetImage('coin', 'coin');
-        const keySet = this.map.addTilesetImage('key', 'key');
         
         // 创建spike组、coin组和frog组
         this.spikesGroup = this.physics.add.staticGroup();
         this.coinsGroup = this.physics.add.staticGroup();
         this.frogsGroup = this.physics.add.group();
 
-        // 创建图层 - 使用所有tilesets
-        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!, keySet!];
+        // 创建图层 - 只使用地形tilesets
+        const allTilesets = [terrainCenter!, terrainTop!];
         const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
         
         if (layer) {
-            // 遍历tilemap，找到所有特殊tiles
-            layer.forEachTile((tile) => {
-                if (tile.index === 3) { // spike tile
-                    // 创建spike对象替换tile
-                    const spike = new Spike(this, tile.pixelX + 32, tile.pixelY + 32);
-                    this.spikesGroup.add(spike);
-                    // 移除原来的tile
-                    layer.removeTileAt(tile.x, tile.y);
-                } else if (tile.index === 4) { // coin tile
-                    // 创建coin对象替换tile
-                    const coin = new Coin(this, tile.pixelX + 32, tile.pixelY + 32);
-                    this.coinsGroup.add(coin);
-                    this.totalCoins++;
-                    // 移除原来的tile
-                    layer.removeTileAt(tile.x, tile.y);
-                } else if (tile.index === 5) { // key tile
-                    // 创建key对象替换tile
-                    this.keyObject = new Key(this, tile.pixelX + 32, tile.pixelY + 32);
-                    // 移除原来的tile
-                    layer.removeTileAt(tile.x, tile.y);
-                }
-            });
-            
             // 设置碰撞 - tiles 1和2是平台
             layer.setCollision([1, 2]); // 草地块
             this.platforms = layer;
@@ -88,12 +62,26 @@ export class Game extends Scene
         const objectLayer = this.map.getObjectLayer('Objects');
         if (objectLayer) {
             objectLayer.objects.forEach((obj: any) => {
+                // 对象中心坐标
+                const x = obj.x + obj.width / 2;
+                const y = obj.y + obj.height / 2;
+                
                 if (obj.type === 'enemy' && obj.name === 'frog') {
                     // 创建青蛙敌人
-                    // Tiled 对象的坐标: x 是左边缘，y 是上边缘（当 gid=0 时）
-                    // 我们需要将青蛙放在对象中心
-                    const frog = new Frog(this, obj.x + obj.width / 2, obj.y + obj.height / 2);
+                    const frog = new Frog(this, x, y);
                     this.frogsGroup.add(frog);
+                } else if (obj.type === 'collectible' && obj.name === 'coin') {
+                    // 创建金币
+                    const coin = new Coin(this, x, y);
+                    this.coinsGroup.add(coin);
+                    this.totalCoins++;
+                } else if (obj.type === 'collectible' && obj.name === 'key') {
+                    // 创建钥匙
+                    this.keyObject = new Key(this, x, y);
+                } else if (obj.type === 'hazard' && obj.name === 'spike') {
+                    // 创建尖刺
+                    const spike = new Spike(this, x, y);
+                    this.spikesGroup.add(spike);
                 }
             });
         }
