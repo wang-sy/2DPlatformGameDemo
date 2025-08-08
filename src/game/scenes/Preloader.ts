@@ -33,6 +33,9 @@ export class Preloader extends Scene
         this.load.setPath('assets');
 
         this.load.image('logo', 'logo.png');
+        
+        this.load.atlas('player', 'player/character_purple.png', 'player/character_purple.json');
+        this.load.image('platform', 'bg.png');
     }
 
     create ()

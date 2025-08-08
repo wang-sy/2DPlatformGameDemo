@@ -1,0 +1,75 @@
+{
+    "name": "character_purple",
+    "type": "character",
+    "image_filename": "character_purple.png",
+    "atlas_json_name": "character_purple.json",
+    "frame_size": {
+        "width": 128,
+        "height": 128
+    },
+    "animations": [
+        {
+            "name": "climb",
+            "filename_prefix": "climb/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 1
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "duck",
+            "filename_prefix": "duck/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "front",
+            "filename_prefix": "front/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "hit",
+            "filename_prefix": "hit/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "idle",
+            "filename_prefix": "idle/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "jump",
+            "filename_prefix": "jump/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 0
+            },
+            "padding_size": 4
+        },
+        {
+            "name": "walk",
+            "filename_prefix": "walk/frame",
+            "frame_range": {
+                "from": 0,
+                "to": 1
+            },
+            "padding_size": 4
+        }
+    ]
+}
