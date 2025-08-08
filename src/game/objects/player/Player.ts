@@ -9,6 +9,23 @@ export class Player extends Physics.Arcade.Sprite {
     private maxHealth: number = 3;
     private isInvulnerable: boolean = false;
     private invulnerabilityDuration: number = 1500; // 1.5秒无敌时间
+    
+    // 抓墙跳相关
+    private isWallSliding: boolean = false;
+    private canWallJump: boolean = false;
+    private wallJumpDirection: number = 0;
+    private wallSlideSpeed: number = 50;
+    private wallJumpForce: number = 250;
+    private wallJumpUpForce: number = -380;
+    
+    // 蓄力跳相关
+    private isCharging: boolean = false;
+    private chargeStartTime: number = 0;
+    private maxChargeTime: number = 1000; // 最大蓄力1秒
+    private minJumpForce: number = -400;
+    private maxJumpForce: number = -600;
+    private chargeBar: Phaser.GameObjects.Rectangle | null = null;
+    private chargeBarBg: Phaser.GameObjects.Rectangle | null = null;
 
     constructor(scene: Scene, x: number, y: number) {
         super(scene, x, y, 'player', 'idle/frame0000');
@@ -28,6 +45,9 @@ export class Player extends Physics.Arcade.Sprite {
         
         this.createAnimations();
         this.play('player-idle');
+        
+        // 创建蓄力条（初始隐藏）
+        this.createChargeBar();
     }
 
     private createAnimations(): void {
@@ -83,48 +103,62 @@ export class Player extends Physics.Arcade.Sprite {
 
     update(): void {
         const speed = 200;
-        const jumpVelocity = -400;
         const body = this.body as Phaser.Physics.Arcade.Body;
-        
         const onGround = body.blocked.down;
+        const touchingLeft = body.blocked.left;
+        const touchingRight = body.blocked.right;
         
-        if (onGround) {
+        // 检测抓墙状态
+        this.checkWallSlide(onGround, touchingLeft, touchingRight);
+        
+        // 重置跳跃次数
+        if (onGround || this.isWallSliding) {
             this.jumpCount = 0;
             this.isJumping = false;
         }
         
-        if (this.cursors.left.isDown) {
-            this.setVelocityX(-speed);
-            this.setFlipX(true);
-            if (onGround && !this.cursors.down.isDown) {
-                this.play('player-walk', true);
-            }
-        } else if (this.cursors.right.isDown) {
-            this.setVelocityX(speed);
-            this.setFlipX(false);
-            if (onGround && !this.cursors.down.isDown) {
-                this.play('player-walk', true);
-            }
-        } else {
-            this.setVelocityX(0);
-            if (onGround && !this.cursors.down.isDown) {
-                this.play('player-idle', true);
+        // 左右移动
+        if (!this.canWallJump) {
+            if (this.cursors.left.isDown) {
+                this.setVelocityX(-speed);
+                this.setFlipX(true);
+                if (onGround && !this.cursors.down.isDown && !this.isCharging) {
+                    this.play('player-walk', true);
+                }
+            } else if (this.cursors.right.isDown) {
+                this.setVelocityX(speed);
+                this.setFlipX(false);
+                if (onGround && !this.cursors.down.isDown && !this.isCharging) {
+                    this.play('player-walk', true);
+                }
+            } else {
+                this.setVelocityX(0);
+                if (onGround && !this.cursors.down.isDown && !this.isCharging) {
+                    this.play('player-idle', true);
+                }
             }
         }
         
-        if (this.cursors.down.isDown && onGround) {
+        // 下蹲
+        if (this.cursors.down.isDown && onGround && !this.isCharging) {
             this.play('player-duck', true);
             this.setVelocityX(0);
         }
         
-        if (Phaser.Input.Keyboard.JustDown(this.cursors.up) && this.jumpCount < this.maxJumps) {
-            this.setVelocityY(jumpVelocity);
-            this.jumpCount++;
-            this.isJumping = true;
-            this.play('player-jump', true);
+        // 抓墙滑行
+        if (this.isWallSliding) {
+            this.setVelocityY(Math.min(this.wallSlideSpeed, body.velocity.y));
+            this.play('player-climb', true);
         }
         
-        if (!onGround && this.isJumping) {
+        // 跳跃处理（普通跳、墙跳、蓄力跳）
+        this.handleJump(onGround);
+        
+        // 更新蓄力条位置
+        this.updateChargeBarPosition();
+        
+        // 空中动画
+        if (!onGround && !this.isWallSliding && this.isJumping) {
             this.play('player-jump', true);
         }
     }
@@ -187,5 +221,183 @@ export class Player extends Physics.Arcade.Sprite {
     heal(amount: number): void {
         this.health = Math.min(this.health + amount, this.maxHealth);
         this.emit('heal', this.health);
+    }
+
+    // 抓墙检测
+    private checkWallSlide(onGround: boolean, touchingLeft: boolean, touchingRight: boolean): void {
+        if (onGround) {
+            this.isWallSliding = false;
+            this.canWallJump = false;
+            return;
+        }
+
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        const movingDown = body.velocity.y > 0;
+        
+        if ((touchingLeft && this.cursors.left.isDown) || (touchingRight && this.cursors.right.isDown)) {
+            if (movingDown) {
+                this.isWallSliding = true;
+                this.canWallJump = true;
+                this.wallJumpDirection = touchingLeft ? 1 : -1;
+            }
+        } else {
+            this.isWallSliding = false;
+            // 保持墙跳能力短暂时间
+            if (this.canWallJump) {
+                this.scene.time.delayedCall(100, () => {
+                    this.canWallJump = false;
+                });
+            }
+        }
+    }
+
+    // 跳跃处理
+    private handleJump(onGround: boolean): void {
+        // 按下跳跃键
+        if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
+            // 墙跳
+            if (this.canWallJump && !onGround) {
+                this.performWallJump();
+            }
+            // 地面蓄力跳开始
+            else if (onGround && this.cursors.shift?.isDown) {
+                this.startChargeJump();
+            }
+            // 普通跳跃
+            else if (this.jumpCount < this.maxJumps) {
+                this.performNormalJump();
+            }
+        }
+        
+        // 释放跳跃键 - 执行蓄力跳
+        if (Phaser.Input.Keyboard.JustUp(this.cursors.up) && this.isCharging) {
+            this.releaseChargeJump();
+        }
+        
+        // 更新蓄力状态
+        if (this.isCharging) {
+            this.updateChargeBar();
+        }
+    }
+
+    // 普通跳跃
+    private performNormalJump(): void {
+        this.setVelocityY(this.minJumpForce);
+        this.jumpCount++;
+        this.isJumping = true;
+        this.play('player-jump', true);
+    }
+
+    // 墙跳
+    private performWallJump(): void {
+        this.setVelocityY(this.wallJumpUpForce);
+        this.setVelocityX(this.wallJumpForce * this.wallJumpDirection);
+        this.canWallJump = false;
+        this.isWallSliding = false;
+        this.isJumping = true;
+        this.jumpCount = 1;
+        this.play('player-jump', true);
+        
+        // 短暂禁用左右控制
+        this.scene.time.delayedCall(200, () => {
+            this.canWallJump = false;
+        });
+    }
+
+    // 开始蓄力跳
+    private startChargeJump(): void {
+        this.isCharging = true;
+        this.chargeStartTime = this.scene.time.now;
+        this.showChargeBar();
+        this.setTint(0xffff00); // 黄色充能效果
+    }
+
+    // 释放蓄力跳
+    private releaseChargeJump(): void {
+        const chargeTime = Math.min(this.scene.time.now - this.chargeStartTime, this.maxChargeTime);
+        const chargePercent = chargeTime / this.maxChargeTime;
+        const jumpForce = this.minJumpForce + (this.maxJumpForce - this.minJumpForce) * chargePercent;
+        
+        this.setVelocityY(jumpForce);
+        this.isCharging = false;
+        this.isJumping = true;
+        this.jumpCount = 1;
+        this.hideChargeBar();
+        this.clearTint();
+        this.play('player-jump', true);
+        
+        // 添加粒子效果
+        if (chargePercent > 0.5) {
+            this.createJumpEffect();
+        }
+    }
+
+    // 创建蓄力条
+    private createChargeBar(): void {
+        this.chargeBarBg = this.scene.add.rectangle(this.x, this.y - 40, 50, 8, 0x333333);
+        this.chargeBar = this.scene.add.rectangle(this.x - 25, this.y - 40, 0, 6, 0xffff00);
+        this.chargeBarBg.setOrigin(0.5, 0.5);
+        this.chargeBar.setOrigin(0, 0.5);
+        this.hideChargeBar();
+    }
+
+    // 更新蓄力条
+    private updateChargeBar(): void {
+        if (!this.chargeBar || !this.isCharging) return;
+        
+        const chargeTime = Math.min(this.scene.time.now - this.chargeStartTime, this.maxChargeTime);
+        const chargePercent = chargeTime / this.maxChargeTime;
+        this.chargeBar.width = 50 * chargePercent;
+        
+        // 根据充能程度改变颜色
+        if (chargePercent > 0.8) {
+            this.chargeBar.setFillStyle(0xff0000); // 红色
+        } else if (chargePercent > 0.5) {
+            this.chargeBar.setFillStyle(0xffa500); // 橙色
+        }
+    }
+
+    // 更新蓄力条位置
+    private updateChargeBarPosition(): void {
+        if (this.chargeBarBg && this.chargeBar) {
+            this.chargeBarBg.x = this.x;
+            this.chargeBarBg.y = this.y - 40;
+            this.chargeBar.x = this.x - 25;
+            this.chargeBar.y = this.y - 40;
+        }
+    }
+
+    // 显示蓄力条
+    private showChargeBar(): void {
+        if (this.chargeBarBg && this.chargeBar) {
+            this.chargeBarBg.setVisible(true);
+            this.chargeBar.setVisible(true);
+            this.chargeBar.width = 0;
+            this.chargeBar.setFillStyle(0xffff00);
+        }
+    }
+
+    // 隐藏蓄力条
+    private hideChargeBar(): void {
+        if (this.chargeBarBg && this.chargeBar) {
+            this.chargeBarBg.setVisible(false);
+            this.chargeBar.setVisible(false);
+        }
+    }
+
+    // 跳跃特效
+    private createJumpEffect(): void {
+        const particles = this.scene.add.particles(this.x, this.y + 20, 'player', {
+            frame: 'idle/frame0000',
+            scale: { start: 0.3, end: 0 },
+            alpha: { start: 1, end: 0 },
+            speed: { min: 50, max: 150 },
+            lifespan: 300,
+            quantity: 5
+        });
+        
+        this.scene.time.delayedCall(500, () => {
+            particles.destroy();
+        });
     }
 }
