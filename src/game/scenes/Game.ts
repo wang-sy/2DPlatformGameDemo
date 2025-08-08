@@ -3,6 +3,7 @@ import { Player } from '../objects/player/Player';
 import { Spike } from '../objects/spike/Spike';
 import { Flag } from '../objects/flag/Flag';
 import { Coin } from '../objects/coin/Coin';
+import { Key } from '../objects/key/Key';
 
 export class Game extends Scene
 {
@@ -12,13 +13,16 @@ export class Game extends Scene
     platforms: Phaser.Tilemaps.TilemapLayer | null = null;
     spikesGroup: Phaser.Physics.Arcade.StaticGroup;
     coinsGroup: Phaser.Physics.Arcade.StaticGroup;
+    keyObject: Key | null = null;
     map: Phaser.Tilemaps.Tilemap | null = null;
     healthText: Phaser.GameObjects.Text;
     coinText: Phaser.GameObjects.Text;
+    keyIcon: Phaser.GameObjects.Image;
     flag: Flag;
     victoryText: Phaser.GameObjects.Text;
     score: number = 0;
     totalCoins: number = 0;
+    hasKey: boolean = false;
 
     constructor ()
     {
@@ -38,17 +42,18 @@ export class Game extends Scene
         const terrainTop = this.map.addTilesetImage('terrain_grass_block_top', 'terrain_grass_block_top');
         const spikesSet = this.map.addTilesetImage('spikes', 'spikes');
         const coinSet = this.map.addTilesetImage('coin', 'coin');
+        const keySet = this.map.addTilesetImage('key', 'key');
         
         // 创建spike组和coin组
         this.spikesGroup = this.physics.add.staticGroup();
         this.coinsGroup = this.physics.add.staticGroup();
 
         // 创建图层 - 使用所有tilesets
-        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!];
+        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!, coinSet!, keySet!];
         const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
         
         if (layer) {
-            // 遍历tilemap，找到所有spike tiles (tile ID 3) 和 coin tiles (tile ID 4)
+            // 遍历tilemap，找到所有特殊tiles
             layer.forEachTile((tile) => {
                 if (tile.index === 3) { // spike tile
                     // 创建spike对象替换tile
@@ -61,6 +66,11 @@ export class Game extends Scene
                     const coin = new Coin(this, tile.pixelX + 32, tile.pixelY + 32);
                     this.coinsGroup.add(coin);
                     this.totalCoins++;
+                    // 移除原来的tile
+                    layer.removeTileAt(tile.x, tile.y);
+                } else if (tile.index === 5) { // key tile
+                    // 创建key对象替换tile
+                    this.keyObject = new Key(this, tile.pixelX + 32, tile.pixelY + 32);
                     // 移除原来的tile
                     layer.removeTileAt(tile.x, tile.y);
                 }
@@ -87,6 +97,11 @@ export class Game extends Scene
         
         // 添加玩家与金币的碰撞
         this.physics.add.overlap(this.player, this.coinsGroup, this.handleCoinCollect, undefined, this);
+        
+        // 添加玩家与钥匙的碰撞
+        if (this.keyObject) {
+            this.physics.add.overlap(this.player, this.keyObject, this.handleKeyCollect, undefined, this);
+        }
         
         // 添加玩家与终点的碰撞
         this.physics.add.overlap(this.player, this.flag, this.handleFlagReached, undefined, this);
@@ -132,6 +147,13 @@ export class Game extends Scene
         this.coinText.setScrollFactor(0);
         this.updateCoinUI();
         
+        // 创建钥匙图标（初始隐藏）
+        this.keyIcon = this.add.image(16, 110, 'key');
+        this.keyIcon.setScale(0.6);
+        this.keyIcon.setScrollFactor(0);
+        this.keyIcon.setVisible(false);
+        this.keyIcon.setAlpha(0.5);
+        
         // 创建胜利文本（初始隐藏）
         this.victoryText = this.add.text(512, 300, 'VICTORY!', {
             fontSize: '72px',
@@ -176,12 +198,80 @@ export class Game extends Scene
         }
     }
 
+    private handleKeyCollect(player: any, key: any): void {
+        const keyObj = key as Key;
+        if (!keyObj.isCollected()) {
+            keyObj.collect();
+            this.hasKey = true;
+            
+            // 更新钥匙UI
+            this.keyIcon.setVisible(true);
+            this.keyIcon.setAlpha(1);
+            
+            // 钥匙图标动画
+            this.tweens.add({
+                targets: this.keyIcon,
+                scale: { from: 0, to: 0.6 },
+                angle: 360,
+                duration: 500,
+                ease: 'Bounce.easeOut'
+            });
+            
+            // 让旗帜发光表示可以通关了
+            if (this.flag) {
+                this.flag.setTint(0x00ff00);
+                this.tweens.add({
+                    targets: this.flag,
+                    alpha: { from: 0.5, to: 1 },
+                    duration: 500,
+                    yoyo: true,
+                    repeat: -1
+                });
+            }
+        }
+    }
+
     private handleFlagReached(player: any, flag: any): void {
         const flagObj = flag as Flag;
         if (!flagObj.isReached()) {
-            flagObj.activate();
-            this.onVictory();
+            if (this.hasKey) {
+                flagObj.activate();
+                this.onVictory();
+            } else {
+                // 显示需要钥匙的提示
+                this.showKeyRequiredMessage();
+            }
         }
+    }
+    
+    private showKeyRequiredMessage(): void {
+        const message = this.add.text(512, 400, '🔒 You need the KEY to pass! 🔒', {
+            fontSize: '32px',
+            color: '#ff0000',
+            stroke: '#000000',
+            strokeThickness: 6
+        });
+        message.setOrigin(0.5);
+        message.setScrollFactor(0);
+        
+        // 闪烁动画
+        this.tweens.add({
+            targets: message,
+            alpha: { from: 1, to: 0 },
+            scale: { from: 1, to: 1.2 },
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => {
+                message.destroy();
+            }
+        });
+        
+        // 弹开玩家
+        const angle = Phaser.Math.Angle.Between(this.flag.x, this.flag.y, this.player.x, this.player.y);
+        this.player.setVelocity(
+            Math.cos(angle) * 300,
+            Math.sin(angle) * 300 - 200
+        );
     }
     
     private showAllCoinsCollectedBonus(): void {

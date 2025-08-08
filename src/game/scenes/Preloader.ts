@@ -44,6 +44,7 @@ export class Preloader extends Scene
         this.load.image('spikes', 'tilemap/tiles/spikes.png');
         this.load.image('flag', 'tilemap/tiles/flag_green_a.png');
         this.load.image('coin', 'tilemap/tiles/coin_gold.png');
+        this.load.image('key', 'tilemap/tiles/hud_key_green.png');
     }
 
     create ()
