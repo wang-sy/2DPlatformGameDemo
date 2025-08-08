@@ -12,13 +12,13 @@ export class Player extends Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
         
-        this.setScale(0.8);
+        this.setScale(0.5);
         this.setBounce(0.2);
         this.setCollideWorldBounds(true);
         
         const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setSize(64, 100);
-        body.setOffset(32, 28);
+        body.setSize(50, 80);
+        body.setOffset(39, 35);
         
         this.cursors = scene.input.keyboard!.createCursorKeys();
         

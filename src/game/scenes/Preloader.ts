@@ -34,6 +34,14 @@ export class Preloader extends Scene
         
         this.load.atlas('player', 'player/character_purple.png', 'player/character_purple.json');
         this.load.image('platform', 'bg.png');
+        
+        // Load tilemap
+        this.load.tilemapTiledJSON('tilemap', 'tilemap/scenes/game.json');
+        
+        // Load tileset images
+        this.load.image('terrain_grass_block_center', 'tilemap/tiles/terrain_grass_block_center.png');
+        this.load.image('terrain_grass_block_top', 'tilemap/tiles/terrain_grass_block_top.png');
+        this.load.image('spikes', 'tilemap/tiles/spikes.png');
     }
 
     create ()

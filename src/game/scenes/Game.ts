@@ -6,7 +6,9 @@ export class Game extends Scene
     camera: Phaser.Cameras.Scene2D.Camera;
     background: Phaser.GameObjects.Image;
     player: Player;
-    platforms: Phaser.Physics.Arcade.StaticGroup;
+    platforms: Phaser.Tilemaps.TilemapLayer | null = null;
+    spikes: Phaser.Tilemaps.TilemapLayer | null = null;
+    map: Phaser.Tilemaps.Tilemap | null = null;
 
     constructor ()
     {
@@ -18,39 +20,42 @@ export class Game extends Scene
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x87CEEB);
 
-        this.background = this.add.image(512, 384, 'background');
-        this.background.setAlpha(0.5);
+        // 创建tilemap
+        this.map = this.make.tilemap({ key: 'tilemap' });
+        
+        // 添加tilesets到map
+        const terrainCenter = this.map.addTilesetImage('terrain_grass_block_center', 'terrain_grass_block_center');
+        const terrainTop = this.map.addTilesetImage('terrain_grass_block_top', 'terrain_grass_block_top');
+        const spikesSet = this.map.addTilesetImage('spikes', 'spikes');
+        
+        // 创建图层 - 使用所有tilesets
+        const allTilesets = [terrainCenter!, terrainTop!, spikesSet!];
+        const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
+        
+        if (layer) {
+            // 设置碰撞 - tiles 1和2是平台，3是尖刺
+            layer.setCollisionByProperty({ collides: true });
+            layer.setCollision([1, 2]); // 草地块
+            
+            this.platforms = layer;
+        }
 
-        // 创建平台组
-        this.platforms = this.physics.add.staticGroup();
-        
-        // 创建地面平台（底部大平台）
-        const ground = this.add.rectangle(512, 700, 800, 50, 0x654321);
-        this.platforms.add(ground);
-        
-        // 创建浮空平台
-        const platform1 = this.add.rectangle(200, 550, 200, 20, 0x8B4513);
-        this.platforms.add(platform1);
-        
-        const platform2 = this.add.rectangle(750, 450, 200, 20, 0x8B4513);
-        this.platforms.add(platform2);
-        
-        const platform3 = this.add.rectangle(500, 350, 200, 20, 0x8B4513);
-        this.platforms.add(platform3);
-        
-        // 创建一些额外的平台增加游戏性
-        const platform4 = this.add.rectangle(100, 650, 150, 20, 0x8B4513);
-        this.platforms.add(platform4);
-        
-        const platform5 = this.add.rectangle(900, 600, 150, 20, 0x8B4513);
-        this.platforms.add(platform5);
+        // 创建玩家
+        this.player = new Player(this, 100, 100);
 
-        this.player = new Player(this, 100, 450);
+        // 添加玩家与平台的碰撞
+        if (this.platforms) {
+            this.physics.add.collider(this.player, this.platforms);
+        }
 
-        this.physics.add.collider(this.player, this.platforms);
-
+        // 设置相机跟随和边界
+        const mapWidth = this.map.widthInPixels;
+        const mapHeight = this.map.heightInPixels;
         this.cameras.main.startFollow(this.player);
-        this.cameras.main.setBounds(0, 0, 1024, 768);
+        this.cameras.main.setBounds(0, 0, mapWidth, mapHeight);
+        
+        // 设置世界边界
+        this.physics.world.setBounds(0, 0, mapWidth, mapHeight);
     }
 
     update ()
