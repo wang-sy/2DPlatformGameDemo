@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import { Player } from '../objects/player/Player';
 import { Spike } from '../objects/spike/Spike';
+import { Flag } from '../objects/flag/Flag';
 
 export class Game extends Scene
 {
@@ -11,6 +12,8 @@ export class Game extends Scene
     spikesGroup: Phaser.Physics.Arcade.StaticGroup;
     map: Phaser.Tilemaps.Tilemap | null = null;
     healthText: Phaser.GameObjects.Text;
+    flag: Flag;
+    victoryText: Phaser.GameObjects.Text;
 
     constructor ()
     {
@@ -56,6 +59,9 @@ export class Game extends Scene
 
         // 创建玩家
         this.player = new Player(this, 100, 100);
+        
+        // 创建终点旗帜（放在地图的右边较高的平台上）
+        this.flag = new Flag(this, 1500, 200);
 
         // 添加玩家与平台的碰撞
         if (this.platforms) {
@@ -64,6 +70,9 @@ export class Game extends Scene
 
         // 添加玩家与尖刺的碰撞
         this.physics.add.overlap(this.player, this.spikesGroup, this.handleSpikeCollision, undefined, this);
+        
+        // 添加玩家与终点的碰撞
+        this.physics.add.overlap(this.player, this.flag, this.handleFlagReached, undefined, this);
 
         // 设置相机跟随和边界
         const mapWidth = this.map.widthInPixels;
@@ -95,6 +104,17 @@ export class Game extends Scene
         });
         this.healthText.setScrollFactor(0); // 固定在屏幕上
         this.updateHealthUI(this.player.getHealth());
+        
+        // 创建胜利文本（初始隐藏）
+        this.victoryText = this.add.text(512, 300, 'VICTORY!', {
+            fontSize: '72px',
+            color: '#00ff00',
+            stroke: '#000000',
+            strokeThickness: 8
+        });
+        this.victoryText.setOrigin(0.5);
+        this.victoryText.setScrollFactor(0);
+        this.victoryText.setVisible(false);
     }
 
     private updateHealthUI(health: number): void {
@@ -111,8 +131,64 @@ export class Game extends Scene
         }
     }
 
+    private handleFlagReached(player: any, flag: any): void {
+        const flagObj = flag as Flag;
+        if (!flagObj.isReached()) {
+            flagObj.activate();
+            this.onVictory();
+        }
+    }
+    
+    private onVictory(): void {
+        // 停止玩家控制
+        this.player.body!.enable = false;
+        this.player.setVelocity(0, 0);
+        
+        // 显示胜利文本
+        this.victoryText.setVisible(true);
+        
+        // 胜利动画
+        this.tweens.add({
+            targets: this.victoryText,
+            scale: { from: 0, to: 1 },
+            angle: { from: -180, to: 0 },
+            duration: 1000,
+            ease: 'Bounce.easeOut'
+        });
+        
+        // 添加彩虹背景效果
+        let hue = 0;
+        this.time.addEvent({
+            delay: 50,
+            callback: () => {
+                hue = (hue + 5) % 360;
+                const color = Phaser.Display.Color.HSLToColor(hue / 360, 1, 0.5);
+                this.cameras.main.setBackgroundColor(color.color);
+            },
+            repeat: -1
+        });
+        
+        // 播放玩家胜利动画
+        this.player.setTint(0xffff00);
+        this.tweens.add({
+            targets: this.player,
+            y: this.player.y - 50,
+            duration: 500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Power1'
+        });
+        
+        // 3秒后重新开始（可以改为进入下一关）
+        this.time.delayedCall(5000, () => {
+            this.scene.restart();
+        });
+    }
+
     update ()
     {
-        this.player.update();
+        if (this.flag && !this.flag.isReached()) {
+            this.player.update();
+        }
     }
 }
