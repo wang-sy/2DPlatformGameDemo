@@ -390,15 +390,13 @@ export class Game extends Scene
 
     update ()
     {
-        if (this.flag && !this.flag.isReached()) {
-            this.player.update();
-            
-            // 更新所有青蛙
-            this.frogsGroup.children.entries.forEach((frog: any) => {
-                if (frog.active) {
-                    frog.update();
-                }
-            });
-        }
+        this.player.update();
+        
+        // 更新所有青蛙
+        this.frogsGroup.children.entries.forEach((frog: any) => {
+            if (frog.active) {
+                frog.update();
+            }
+        });
     }
 }
