@@ -125,6 +125,7 @@ export const ASSET_PATHS = {
 };
 
 export const TILEMAP_OBJECTS = {
+    PLAYER: 'player',  // 玩家对象
     ENEMY: {
         // ...existing
         BAT: 'bat'  // tilemap中的对象名
@@ -202,8 +203,13 @@ import { Bat } from '../objects/enemy/Bat';
 
 // 在createGameObjectByType方法中添加
 private createGameObjectByType(obj: any, x: number, y: number): void {
+    // 玩家类型
+    if (obj.type === 'player' || obj.name === TILEMAP_OBJECTS.PLAYER) {
+        this.player = new Player(this, x, y);
+        this.player.setName('player');
+    }
     // 敌人类型
-    if (obj.type === 'enemy') {
+    else if (obj.type === 'enemy') {
         if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
             const frog = new Frog(this, x, y);
             this.frogsGroup.add(frog);
@@ -288,6 +294,7 @@ export const ASSET_PATHS = {
 
 // 3. Tilemap相关常量
 export const TILEMAP_OBJECTS = {  // tilemap中的对象名
+    PLAYER: 'player',  // 玩家对象
     ENEMY: { FROG: 'frog' },
     COLLECTIBLE: { COIN: 'coin', KEY: 'key' },
     // ...
@@ -357,7 +364,15 @@ preload() {
             "type": "objectgroup",  // 对象层
             "objects": [
                 {
-                    "name": "coin",  // 对应 TILEMAP_OBJECTS
+                    "name": "player",  // 对应 TILEMAP_OBJECTS.PLAYER
+                    "type": "player",
+                    "x": 64,
+                    "y": 960,
+                    "width": 64,
+                    "height": 64
+                },
+                {
+                    "name": "coin",  // 对应 TILEMAP_OBJECTS.COLLECTIBLE.COIN
                     "type": "collectible",
                     "x": 128,
                     "y": 768,

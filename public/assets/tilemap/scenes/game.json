@@ -482,6 +482,18 @@
           "width": 64,
           "x": 1472,
           "y": 64
+        },
+        {
+          "gid": 0,
+          "height": 64,
+          "id": 38,
+          "name": "player",
+          "rotation": 0,
+          "type": "player",
+          "visible": true,
+          "width": 64,
+          "x": 64,
+          "y": 960
         }
       ],
       "opacity": 1,
@@ -492,7 +504,7 @@
     }
   ],
   "nextlayerid": 6,
-  "nextobjectid": 38,
+  "nextobjectid": 39,
   "orientation": "orthogonal",
   "renderorder": "right-down",
   "tiledversion": "1.2.2",

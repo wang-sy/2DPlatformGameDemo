@@ -62,9 +62,11 @@ export class Game extends Scene
         // 处理tilemap中的object layer
         this.createGameObjectsFromObjectLayer();
 
-        // 创建玩家（起点在左下角）
-        this.player = new Player(this, 150, 1050);
-        this.player.setName('player');
+        // 如果没有从tilemap加载到玩家，使用默认位置创建
+        if (!this.player) {
+            this.player = new Player(this, 150, 1050);
+            this.player.setName('player');
+        }
 
         // 添加玩家与平台的碰撞
         if (this.platforms) {
@@ -131,8 +133,13 @@ export class Game extends Scene
     }
     
     private createGameObjectByType(obj: any, x: number, y: number): void {
+        // 玩家类型
+        if (obj.type === 'player' || obj.name === TILEMAP_OBJECTS.PLAYER) {
+            this.player = new Player(this, x, y);
+            this.player.setName('player');
+        }
         // 敌人类型
-        if (obj.type === 'enemy') {
+        else if (obj.type === 'enemy') {
             if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
                 const frog = new Frog(this, x, y);
                 this.frogsGroup.add(frog);

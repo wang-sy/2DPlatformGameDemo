@@ -103,11 +103,11 @@ if (this.isCharging) {
 ```json
 {
     "name": "player",
-    "type": "spawn",
-    "x": 100,
-    "y": 400,
-    "width": 32,
-    "height": 32
+    "type": "player",
+    "x": 64,
+    "y": 960,
+    "width": 64,
+    "height": 64
 }
 ```
 
@@ -115,9 +115,21 @@ if (this.isCharging) {
 ```typescript
 import { TILEMAP_OBJECTS } from '../config/AssetConfig';
 
-// 注意：玩家对象通常直接创建，不通过tilemap对象
-this.player = new Player(this, 150, 1050);
-this.player.setName('player');
+// 玩家现在从tilemap对象层加载
+private createGameObjectByType(obj: any, x: number, y: number): void {
+    // 玩家类型
+    if (obj.type === 'player' || obj.name === TILEMAP_OBJECTS.PLAYER) {
+        this.player = new Player(this, x, y);
+        this.player.setName('player');
+    }
+    // ... 其他对象类型
+}
+
+// 如果tilemap中没有定义玩家，使用默认位置作为后备
+if (!this.player) {
+    this.player = new Player(this, 150, 1050);
+    this.player.setName('player');
+}
 ```
 
 ### 碰撞设置
@@ -565,8 +577,13 @@ private createGameObjectsFromObjectLayer(): void {
 import { TILEMAP_OBJECTS } from '../config/AssetConfig';
 
 private createGameObjectByType(obj: any, x: number, y: number): void {
+    // 玩家类型
+    if (obj.type === 'player' || obj.name === TILEMAP_OBJECTS.PLAYER) {
+        this.player = new Player(this, x, y);
+        this.player.setName('player');
+    }
     // 敌人类型
-    if (obj.type === 'enemy') {
+    else if (obj.type === 'enemy') {
         if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
             const frog = new Frog(this, x, y);
             this.frogsGroup.add(frog);

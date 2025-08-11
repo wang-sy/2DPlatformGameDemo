@@ -57,6 +57,7 @@ export const ASSET_PATHS = {
 } as const;
 
 export const TILEMAP_OBJECTS = {
+    PLAYER: 'player',
     ENEMY: {
         FROG: 'frog'
     },
