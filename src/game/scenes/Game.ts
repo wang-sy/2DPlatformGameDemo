@@ -101,7 +101,7 @@ export class Game extends Scene
         this.cameras.main.setBounds(0, 0, mapWidth, mapHeight);
         
         // 设置世界边界
-        this.physics.world.setBounds(0, 0, mapWidth, mapHeight);
+        this.physics.world.setBounds(0, 0, mapWidth, mapHeight, true, true, true, false);
 
         // 创建血量UI
         this.createHealthUI();
@@ -422,6 +422,12 @@ export class Game extends Scene
     update ()
     {
         this.player.update();
+        
+        // 检查玩家是否掉落到地图下方
+        if (this.player.y > this.map!.heightInPixels + 100) {
+            // 玩家掉落到地图下方，触发死亡
+            this.player.takeDamage(this.player.getMaxHealth());
+        }
         
         // 更新所有青蛙
         this.frogsGroup.children.entries.forEach((frog: any) => {
