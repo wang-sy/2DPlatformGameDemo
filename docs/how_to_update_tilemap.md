@@ -11,6 +11,13 @@
 
 这种架构避免了key在多处重复定义，减少了维护成本和出错概率。
 
+### 对象创建流程
+Game场景使用两个专门的方法来处理tilemap中的对象：
+- `createGameObjectsFromObjectLayer()` - 读取并遍历对象层
+- `createGameObjectByType()` - 根据类型创建具体对象
+
+这种结构让对象创建流程更清晰，便于维护和扩展。
+
 ## 📋 快速指南
 
 ### 场景1：添加新的地形瓦片
@@ -193,10 +200,19 @@ export class Bat extends Physics.Arcade.Sprite {
 // src/game/scenes/Game.ts
 import { Bat } from '../objects/enemy/Bat';
 
-// 在创建对象的循环中
-if (obj.type === 'enemy' && obj.name === TILEMAP_OBJECTS.ENEMY.BAT) {
-    const bat = new Bat(this, x, y);
-    this.enemiesGroup.add(bat);
+// 在createGameObjectByType方法中添加
+private createGameObjectByType(obj: any, x: number, y: number): void {
+    // 敌人类型
+    if (obj.type === 'enemy') {
+        if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
+            const frog = new Frog(this, x, y);
+            this.frogsGroup.add(frog);
+        } else if (obj.name === TILEMAP_OBJECTS.ENEMY.BAT) {
+            const bat = new Bat(this, x, y);
+            this.enemiesGroup.add(bat);  // 或者添加到相应的组
+        }
+    }
+    // ... 其他类型处理
 }
 
 // 添加碰撞检测
@@ -359,10 +375,17 @@ preload() {
 ### 1. 坐标系统
 - Tilemap中对象的(x,y)是**左上角**坐标
 - Phaser精灵的锚点默认在**中心**
-- 转换公式：
+- 转换公式（在Game场景中自动处理）：
   ```typescript
-  const x = obj.x + obj.width / 2;
-  const y = obj.y + obj.height / 2;
+  // 在createGameObjectsFromObjectLayer方法中
+  objectLayer.objects.forEach((obj: any) => {
+      // 自动计算对象中心坐标
+      const x = obj.x + obj.width / 2;
+      const y = obj.y + obj.height / 2;
+      
+      // 传递给对象创建方法
+      this.createGameObjectByType(obj, x, y);
+  });
   ```
 
 ### 2. 命名约定

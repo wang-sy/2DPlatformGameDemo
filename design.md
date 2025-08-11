@@ -168,19 +168,65 @@ const terrainCenter = this.map.addTilesetImage(
     ASSET_KEYS.IMAGES.TERRAIN_GRASS_CENTER
 );
 
-// 从object layer创建对象
-const objectLayer = this.map.getObjectLayer('Objects');
-objectLayer.objects.forEach((obj: any) => {
-    const x = obj.x + obj.width / 2;
-    const y = obj.y + obj.height / 2;
+// 初始化游戏对象组
+this.spikesGroup = this.physics.add.staticGroup();
+this.coinsGroup = this.physics.add.staticGroup();
+this.frogsGroup = this.physics.add.group();
+
+// 处理tilemap中的object layer
+this.createGameObjectsFromObjectLayer();
+```
+
+**对象创建方法**:
+```typescript
+private createGameObjectsFromObjectLayer(): void {
+    // 获取object layer
+    const objectLayer = this.map?.getObjectLayer('Objects');
+    if (!objectLayer) return;
     
-    // 使用配置中的对象类型
-    if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
-        const coin = new Coin(this, x, y);
-        this.coinsGroup.add(coin);
+    // 遍历所有对象并创建相应的游戏对象
+    objectLayer.objects.forEach((obj: any) => {
+        // 计算对象中心坐标
+        const x = obj.x + obj.width / 2;
+        const y = obj.y + obj.height / 2;
+        
+        // 根据对象类型和名称创建不同的游戏对象
+        this.createGameObjectByType(obj, x, y);
+    });
+}
+
+private createGameObjectByType(obj: any, x: number, y: number): void {
+    // 敌人类型
+    if (obj.type === 'enemy') {
+        if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
+            const frog = new Frog(this, x, y);
+            this.frogsGroup.add(frog);
+        }
     }
-    // ...
-});
+    // 收集物类型
+    else if (obj.type === 'collectible') {
+        if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
+            const coin = new Coin(this, x, y);
+            this.coinsGroup.add(coin);
+            this.totalCoins++;
+        } else if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
+            this.keyObject = new Key(this, x, y);
+        }
+    }
+    // 危险物类型
+    else if (obj.type === 'hazard') {
+        if (obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
+            const spike = new Spike(this, x, y);
+            this.spikesGroup.add(spike);
+        }
+    }
+    // 目标类型
+    else if (obj.type === 'goal') {
+        if (obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
+            this.flag = new Flag(this, x, y);
+        }
+    }
+}
 ```
 
 **易踩坑点**:
@@ -438,8 +484,8 @@ export class NewObject extends Physics.Arcade.Sprite {
 
 3. **在Game场景中处理**
 ```typescript
-// 在object layer处理中添加
-else if (obj.type === 'newtype' && obj.name === 'newobject') {
+// 在createGameObjectByType方法中添加新的类型判断
+else if (obj.type === 'newtype' && obj.name === TILEMAP_OBJECTS.NEW_CATEGORY.NEW_OBJECT) {
     const newObj = new NewObject(this, x, y);
     this.newObjectGroup.add(newObj);
 }

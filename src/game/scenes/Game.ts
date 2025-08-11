@@ -43,11 +43,6 @@ export class Game extends Scene
         // 添加tilesets到map（现在只需要地形tiles）
         const terrainCenter = this.map.addTilesetImage(TILEMAP_TILESETS.TERRAIN_GRASS_CENTER, ASSET_KEYS.IMAGES.TERRAIN_GRASS_CENTER);
         const terrainTop = this.map.addTilesetImage(TILEMAP_TILESETS.TERRAIN_GRASS_TOP, ASSET_KEYS.IMAGES.TERRAIN_GRASS_TOP);
-        
-        // 创建spike组、coin组和frog组
-        this.spikesGroup = this.physics.add.staticGroup();
-        this.coinsGroup = this.physics.add.staticGroup();
-        this.frogsGroup = this.physics.add.group();
 
         // 创建图层 - 只使用地形tilesets
         const allTilesets = [terrainCenter!, terrainTop!];
@@ -59,36 +54,13 @@ export class Game extends Scene
             this.platforms = layer;
         }
 
-        // 从 object layer 创建对象
-        const objectLayer = this.map.getObjectLayer('Objects');
-        if (objectLayer) {
-            objectLayer.objects.forEach((obj: any) => {
-                // 对象中心坐标
-                const x = obj.x + obj.width / 2;
-                const y = obj.y + obj.height / 2;
-                
-                if (obj.type === 'enemy' && obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
-                    // 创建青蛙敌人
-                    const frog = new Frog(this, x, y);
-                    this.frogsGroup.add(frog);
-                } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
-                    // 创建金币
-                    const coin = new Coin(this, x, y);
-                    this.coinsGroup.add(coin);
-                    this.totalCoins++;
-                } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
-                    // 创建钥匙
-                    this.keyObject = new Key(this, x, y);
-                } else if (obj.type === 'hazard' && obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
-                    // 创建尖刺
-                    const spike = new Spike(this, x, y);
-                    this.spikesGroup.add(spike);
-                } else if (obj.type === 'goal' && obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
-                    // 创建终点旗帜
-                    this.flag = new Flag(this, x, y);
-                }
-            });
-        }
+        // 初始化游戏对象组
+        this.spikesGroup = this.physics.add.staticGroup();
+        this.coinsGroup = this.physics.add.staticGroup();
+        this.frogsGroup = this.physics.add.group();
+        
+        // 处理tilemap中的object layer
+        this.createGameObjectsFromObjectLayer();
 
         // 创建玩家（起点在左下角）
         this.player = new Player(this, 150, 1050);
@@ -142,6 +114,55 @@ export class Game extends Scene
         });
     }
 
+    private createGameObjectsFromObjectLayer(): void {
+        // 获取object layer
+        const objectLayer = this.map?.getObjectLayer('Objects');
+        if (!objectLayer) return;
+        
+        // 遍历所有对象并创建相应的游戏对象
+        objectLayer.objects.forEach((obj: any) => {
+            // 计算对象中心坐标
+            const x = obj.x + obj.width / 2;
+            const y = obj.y + obj.height / 2;
+            
+            // 根据对象类型和名称创建不同的游戏对象
+            this.createGameObjectByType(obj, x, y);
+        });
+    }
+    
+    private createGameObjectByType(obj: any, x: number, y: number): void {
+        // 敌人类型
+        if (obj.type === 'enemy') {
+            if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
+                const frog = new Frog(this, x, y);
+                this.frogsGroup.add(frog);
+            }
+        }
+        // 收集物类型
+        else if (obj.type === 'collectible') {
+            if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
+                const coin = new Coin(this, x, y);
+                this.coinsGroup.add(coin);
+                this.totalCoins++;
+            } else if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
+                this.keyObject = new Key(this, x, y);
+            }
+        }
+        // 危险物类型
+        else if (obj.type === 'hazard') {
+            if (obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
+                const spike = new Spike(this, x, y);
+                this.spikesGroup.add(spike);
+            }
+        }
+        // 目标类型
+        else if (obj.type === 'goal') {
+            if (obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
+                this.flag = new Flag(this, x, y);
+            }
+        }
+    }
+
     private createHealthUI(): void {
         // 创建固定在屏幕上的血量显示
         this.healthText = this.add.text(16, 16, '', {
@@ -190,7 +211,7 @@ export class Game extends Scene
         this.coinText.setText(`🪙 ${this.score}/${this.totalCoins}`);
     }
 
-    private handleSpikeCollision(player: any, spike: any): void {
+    private handleSpikeCollision(_player: any, spike: any): void {
         const spikeObj = spike as Spike;
         if (spikeObj.canDealDamage()) {
             this.player.takeDamage(spikeObj.getDamageAmount());
@@ -198,7 +219,7 @@ export class Game extends Scene
         }
     }
 
-    private handleFrogCollision(player: any, frog: any): void {
+    private handleFrogCollision(_player: any, frog: any): void {
         const frogObj = frog as Frog;
         const playerVelocityY = this.player.body?.velocity.y || 0;
         
@@ -222,7 +243,7 @@ export class Game extends Scene
         }
     }
 
-    private handleCoinCollect(player: any, coin: any): void {
+    private handleCoinCollect(_player: any, coin: any): void {
         const coinObj = coin as Coin;
         if (!coinObj.isCollected()) {
             coinObj.collect();
@@ -236,7 +257,7 @@ export class Game extends Scene
         }
     }
 
-    private handleKeyCollect(player: any, key: any): void {
+    private handleKeyCollect(_player: any, key: any): void {
         const keyObj = key as Key;
         if (!keyObj.isCollected()) {
             keyObj.collect();
@@ -269,7 +290,7 @@ export class Game extends Scene
         }
     }
 
-    private handleFlagReached(player: any, flag: any): void {
+    private handleFlagReached(_player: any, flag: any): void {
         const flagObj = flag as Flag;
         if (!flagObj.isReached()) {
             if (this.hasKey) {
@@ -305,11 +326,13 @@ export class Game extends Scene
         });
         
         // 弹开玩家
-        const angle = Phaser.Math.Angle.Between(this.flag.x, this.flag.y, this.player.x, this.player.y);
-        this.player.setVelocity(
-            Math.cos(angle) * 300,
-            Math.sin(angle) * 300 - 200
-        );
+        if (this.flag) {
+            const angle = Phaser.Math.Angle.Between(this.flag.x, this.flag.y, this.player.x, this.player.y);
+            this.player.setVelocity(
+                Math.cos(angle) * 300,
+                Math.sin(angle) * 300 - 200
+            );
+        }
     }
     
     private showAllCoinsCollectedBonus(): void {

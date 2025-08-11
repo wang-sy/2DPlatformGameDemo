@@ -540,42 +540,68 @@ if (obj.type === 'goal' && obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
 
 ### 2. 对象层处理流程
 
-#### 读取对象层
+#### 主要处理方法
 ```typescript
-const objectLayer = this.map.getObjectLayer('Objects');
-if (!objectLayer) return;
-
-objectLayer.objects.forEach((obj: any) => {
-    this.createGameObject(obj);
-});
+// 在Game场景的create方法中
+private createGameObjectsFromObjectLayer(): void {
+    // 获取object layer
+    const objectLayer = this.map?.getObjectLayer('Objects');
+    if (!objectLayer) return;
+    
+    // 遍历所有对象并创建相应的游戏对象
+    objectLayer.objects.forEach((obj: any) => {
+        // 计算对象中心坐标
+        const x = obj.x + obj.width / 2;
+        const y = obj.y + obj.height / 2;
+        
+        // 根据对象类型和名称创建不同的游戏对象
+        this.createGameObjectByType(obj, x, y);
+    });
+}
 ```
 
-#### 对象工厂模式
+#### 对象创建分发
 ```typescript
 import { TILEMAP_OBJECTS } from '../config/AssetConfig';
 
-private createGameObject(obj: any) {
-    // 坐标转换（Tiled使用左上角，Phaser使用中心点）
-    const x = obj.x + obj.width / 2;
-    const y = obj.y + obj.height / 2;  // 正确的y坐标转换
-    
-    // 使用配置中的对象名称
-    if (obj.type === 'enemy' && obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
-        const frog = new Frog(this, x, y);
-        this.frogsGroup.add(frog);
-    } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
-        const coin = new Coin(this, x, y);
-        this.coinsGroup.add(coin);
-    } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
-        this.keyObject = new Key(this, x, y);
-    } else if (obj.type === 'hazard' && obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
-        const spike = new Spike(this, x, y);
-        this.spikesGroup.add(spike);
-    } else if (obj.type === 'goal' && obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
-        this.flag = new Flag(this, x, y);
+private createGameObjectByType(obj: any, x: number, y: number): void {
+    // 敌人类型
+    if (obj.type === 'enemy') {
+        if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
+            const frog = new Frog(this, x, y);
+            this.frogsGroup.add(frog);
+        }
+    }
+    // 收集物类型
+    else if (obj.type === 'collectible') {
+        if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
+            const coin = new Coin(this, x, y);
+            this.coinsGroup.add(coin);
+            this.totalCoins++;
+        } else if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
+            this.keyObject = new Key(this, x, y);
+        }
+    }
+    // 危险物类型
+    else if (obj.type === 'hazard') {
+        if (obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
+            const spike = new Spike(this, x, y);
+            this.spikesGroup.add(spike);
+        }
+    }
+    // 目标类型
+    else if (obj.type === 'goal') {
+        if (obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
+            this.flag = new Flag(this, x, y);
+        }
     }
 }
 ```
+
+这种结构的优势：
+- **清晰的流程**：先读取对象层，再逐个创建对象
+- **类型分组**：按对象类型（敌人、收集物、危险物、目标）分组处理
+- **易于扩展**：添加新对象类型只需在对应分组中添加判断
 
 ### 3. 坐标系统注意事项
 
