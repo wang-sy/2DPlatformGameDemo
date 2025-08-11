@@ -1,0 +1,635 @@
+# 游戏对象开发文档
+
+## 📦 Player 玩家角色
+
+### 开发思路
+Player是游戏的核心对象，承载了所有玩家交互逻辑。设计时遵循"响应迅速、控制精确"的原则，让玩家感受到角色完全在掌控之中。
+
+### 物理特性
+```typescript
+// 基础物理参数
+gravity: 800              // 重力加速度
+jumpVelocity: -350       // 跳跃初速度（负值向上）
+moveSpeed: 160           // 水平移动速度
+wallSlideSpeed: 50       // 墙壁滑落速度
+chargeJumpMultiplier: 1.8 // 蓄力跳跃倍数
+
+// 碰撞体设置
+this.body.setSize(16, 28);  // 碰撞体尺寸
+this.body.setOffset(4, 4);  // 碰撞体偏移
+```
+
+### 核心机制
+
+#### 1. 基础移动
+```typescript
+// 水平移动 - 线性速度控制
+if (cursors.left.isDown) {
+    this.setVelocityX(-this.moveSpeed);
+    this.setFlipX(true);  // 翻转精灵朝向
+}
+```
+**物理原理**: 直接设置水平速度，提供即时响应
+
+#### 2. 跳跃系统
+```typescript
+// 地面跳跃检测
+if (cursors.up.isDown && this.body.blocked.down) {
+    this.setVelocityY(this.jumpVelocity);
+}
+```
+**物理原理**: 
+- 检测`blocked.down`确保站在实体上
+- 施加向上的瞬时速度
+- 重力自动处理下落
+
+#### 3. 墙跳机制
+```typescript
+// 墙壁检测与跳跃
+if (this.body.blocked.left && !this.body.blocked.down) {
+    this.isWallSliding = true;
+    this.setVelocityY(Math.min(this.body.velocity.y, this.wallSlideSpeed));
+    
+    if (cursors.up.isDown) {
+        this.setVelocity(this.wallJumpForce, this.jumpVelocity);
+    }
+}
+```
+**物理原理**:
+- 限制下落速度模拟摩擦力
+- 墙跳时施加水平推力，让玩家脱离墙壁
+
+#### 4. 蓄力跳跃
+```typescript
+// 蓄力计算
+if (this.isCharging) {
+    this.chargeTime += delta;
+    const chargePercent = Math.min(this.chargeTime / this.maxChargeTime, 1);
+    // 释放时
+    const jumpForce = this.jumpVelocity * (1 + chargePercent * 0.8);
+    this.setVelocityY(jumpForce);
+}
+```
+**物理原理**: 根据蓄力时间线性增加跳跃力度
+
+### Tilemap集成
+
+#### 在Tilemap中配置
+```json
+{
+    "name": "player",
+    "type": "spawn",
+    "x": 100,
+    "y": 400,
+    "width": 32,
+    "height": 32
+}
+```
+
+#### 在Game场景中创建
+```typescript
+if (obj.type === 'spawn' && obj.name === 'player') {
+    this.player = new Player(this, x, y - 16);  // y偏移避免卡入地面
+}
+```
+
+### 碰撞设置
+```typescript
+// 与地形碰撞
+this.physics.add.collider(this.player, terrainLayer);
+
+// 与其他对象交互
+this.physics.add.overlap(this.player, this.spikes, this.handleSpikeCollision);
+```
+
+---
+
+## 🐸 Frog 青蛙敌人
+
+### 开发思路
+Frog设计为基础敌人单位，行为模式简单但有效：巡逻-发现-追击。通过跳跃移动增加了预判难度。
+
+### 物理特性
+```typescript
+// 移动参数
+jumpForce: -300          // 跳跃力
+horizontalJumpSpeed: 100 // 水平跳跃速度
+detectionRange: 200      // 玩家检测范围
+jumpInterval: 2000       // 跳跃间隔(ms)
+
+// 碰撞体
+this.body.setSize(24, 24);
+this.body.setBounce(0.2);  // 轻微弹性
+```
+
+### AI行为
+
+#### 1. 巡逻模式
+```typescript
+private patrol() {
+    if (Date.now() - this.lastJumpTime > this.jumpInterval) {
+        if (this.body.blocked.down) {
+            this.jump();
+            this.lastJumpTime = Date.now();
+        }
+    }
+}
+```
+**物理原理**: 定时触发跳跃，随机方向
+
+#### 2. 追击模式
+```typescript
+private chasePlayer(player: Player) {
+    const distance = Phaser.Math.Distance.Between(
+        this.x, this.y, player.x, player.y
+    );
+    
+    if (distance < this.detectionRange) {
+        this.direction = player.x > this.x ? 1 : -1;
+        this.jump();
+    }
+}
+```
+**物理原理**: 计算与玩家距离，调整跳跃方向
+
+#### 3. 踩踏检测
+```typescript
+// 判断玩家是否从上方接触
+const playerFromAbove = player.body.velocity.y > 0 && 
+                       player.y < frog.y;
+if (playerFromAbove) {
+    frog.die();
+    player.setVelocityY(-200);  // 踩踏反弹
+}
+```
+
+### Tilemap集成
+```json
+{
+    "name": "frog",
+    "type": "enemy",
+    "x": 300,
+    "y": 350,
+    "properties": {
+        "patrolWidth": 100,
+        "aggressive": true
+    }
+}
+```
+
+---
+
+## 🗡️ Spike 尖刺陷阱
+
+### 开发思路
+Spike作为静态危险物，设计简单但位置摆放讲究。通过视觉反馈（闪烁）和无敌时间避免连续伤害。
+
+### 物理特性
+```typescript
+// 静态物体
+this.scene.physics.add.existing(this, true);  // true = static
+
+// 碰撞体精确设置
+this.body.setSize(28, 16);     // 略小于实际大小
+this.body.setOffset(2, 16);    // 底部对齐
+```
+
+### 伤害机制
+```typescript
+private handleSpikeCollision(player: Player, spike: Spike) {
+    if (!player.isInvulnerable) {
+        player.takeDamage(1);
+        
+        // 击退效果
+        const knockbackX = player.x < spike.x ? -150 : 150;
+        player.setVelocity(knockbackX, -200);
+    }
+}
+```
+**物理原理**: 施加反向速度模拟击退
+
+### Tilemap集成
+```json
+{
+    "name": "spike",
+    "type": "hazard",
+    "x": 200,
+    "y": 464,  // 确保在平台表面
+    "properties": {
+        "damage": 1,
+        "knockback": true
+    }
+}
+```
+
+### 放置技巧
+- 尖刺y坐标 = 平台y坐标 - 尖刺高度/2
+- 避免放在必经之路造成强制伤害
+- 配合跳跃节奏增加挑战
+
+---
+
+## 🪙 Coin 金币收集品
+
+### 开发思路
+Coin提供可选目标，增加重玩价值。通过旋转动画和粒子效果提升收集满足感。
+
+### 物理特性
+```typescript
+// 静态组管理（不受重力影响）
+const coinGroup = this.physics.add.staticGroup();
+
+// 视觉动画（不影响物理）
+this.scene.tweens.add({
+    targets: this,
+    angle: 360,
+    duration: 2000,
+    repeat: -1
+});
+
+// 浮动效果
+this.scene.tweens.add({
+    targets: this,
+    y: this.y - 5,
+    duration: 1000,
+    yoyo: true,
+    repeat: -1
+});
+```
+
+### 收集机制
+```typescript
+private collectCoin(player: Player, coin: Coin) {
+    // 防止重复收集
+    if (coin.collected) return;
+    coin.collected = true;
+    
+    // 收集动画
+    this.scene.tweens.add({
+        targets: coin,
+        alpha: 0,
+        scale: 1.5,
+        duration: 300,
+        onComplete: () => coin.destroy()
+    });
+    
+    // 更新分数
+    this.score += 10;
+}
+```
+
+### Tilemap集成
+```json
+{
+    "name": "coin",
+    "type": "collectible",
+    "x": 150,
+    "y": 400,
+    "properties": {
+        "value": 10,
+        "respawn": false
+    }
+}
+```
+
+### 摆放策略
+- 主路径：引导玩家
+- 隐藏区域：奖励探索
+- 危险位置：风险与回报
+- 跳跃路径：练习技巧
+
+---
+
+## 🔑 Key 钥匙
+
+### 开发思路
+Key作为进度门槛，强制玩家探索关卡。视觉上更醒目，确保玩家注意到。
+
+### 物理特性
+```typescript
+// 发光效果
+this.scene.add.particles(this.x, this.y, 'flares', {
+    frame: 'yellow',
+    scale: { start: 0.5, end: 0 },
+    alpha: { start: 0.5, end: 0 },
+    speed: 50,
+    lifespan: 1000
+});
+
+// 重要性提示 - 更大的浮动幅度
+this.scene.tweens.add({
+    targets: this,
+    y: this.y - 10,
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+});
+```
+
+### 收集逻辑
+```typescript
+private collectKey(player: Player, key: Key) {
+    player.hasKey = true;
+    
+    // UI反馈
+    this.keyIcon.setAlpha(1);  // 显示已获得
+    
+    // 音效提示（如果有）
+    // this.sound.play('key_collect');
+}
+```
+
+### Tilemap集成
+```json
+{
+    "name": "key",
+    "type": "collectible",
+    "x": 500,
+    "y": 200,
+    "properties": {
+        "required": true,
+        "unlocks": "flag"
+    }
+}
+```
+
+---
+
+## 🚩 Flag 终点旗帜
+
+### 开发思路
+Flag作为关卡目标，需要明显的视觉标识和达成反馈。飘动动画增加生动感。
+
+### 物理特性
+```typescript
+// 静态物体但有动画
+this.scene.physics.add.existing(this, true);
+
+// 飘动效果
+this.scene.tweens.add({
+    targets: this,
+    scaleX: 1.1,
+    angle: 5,
+    duration: 1000,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+});
+```
+
+### 胜利检测
+```typescript
+private checkVictory(player: Player, flag: Flag) {
+    if (!player.hasKey) {
+        // 提示需要钥匙
+        this.showMessage('需要钥匙！');
+        return;
+    }
+    
+    // 胜利处理
+    player.setVelocity(0, 0);  // 停止移动
+    
+    // 胜利动画
+    this.cameras.main.fade(1000, 255, 255, 255);
+    this.time.delayedCall(1000, () => {
+        this.scene.start('GameOver', { victory: true });
+    });
+}
+```
+
+### Tilemap集成
+```json
+{
+    "name": "flag",
+    "type": "goal",
+    "x": 900,
+    "y": 100,
+    "properties": {
+        "requiresKey": true,
+        "nextLevel": "level2"
+    }
+}
+```
+
+---
+
+## 🗺️ Tilemap集成指南
+
+### 1. Tilemap结构
+```json
+{
+    "width": 32,
+    "height": 24,
+    "tilewidth": 32,
+    "tileheight": 32,
+    "layers": [
+        {
+            "name": "Terrain",
+            "type": "tilelayer",
+            "data": [...]  // 地形tiles
+        },
+        {
+            "name": "Objects",
+            "type": "objectgroup",
+            "objects": [...]  // 游戏对象
+        }
+    ]
+}
+```
+
+### 2. 对象层处理流程
+
+#### 读取对象层
+```typescript
+const objectLayer = this.map.getObjectLayer('Objects');
+if (!objectLayer) return;
+
+objectLayer.objects.forEach((obj: any) => {
+    this.createGameObject(obj);
+});
+```
+
+#### 对象工厂模式
+```typescript
+private createGameObject(obj: any) {
+    // 坐标转换（Tiled使用左上角，Phaser使用中心点）
+    const x = obj.x + obj.width / 2;
+    const y = obj.y - obj.height / 2;  // 注意y轴方向
+    
+    switch(obj.type) {
+        case 'spawn':
+            return this.createPlayer(x, y);
+        case 'enemy':
+            return this.createEnemy(x, y, obj.name);
+        case 'collectible':
+            return this.createCollectible(x, y, obj.name);
+        case 'hazard':
+            return this.createHazard(x, y, obj.name);
+        case 'goal':
+            return this.createGoal(x, y);
+    }
+}
+```
+
+### 3. 坐标系统注意事项
+
+#### Tiled坐标系
+- 原点：左上角
+- Y轴：向下为正
+- 对象锚点：左上角
+
+#### Phaser坐标系
+- 原点：左上角
+- Y轴：向下为正
+- 精灵锚点：中心（默认）
+
+#### 转换公式
+```typescript
+// Tiled对象坐标 -> Phaser精灵坐标
+phaserX = tiledX + tiledWidth / 2;
+phaserY = tiledY + tiledHeight / 2;
+
+// 确保对象在平台上方
+if (needsGroundAlignment) {
+    phaserY = platformY - objectHeight / 2;
+}
+```
+
+### 4. 碰撞层设置
+```typescript
+// 创建碰撞层
+const terrainLayer = this.map.createLayer('Terrain', tileset);
+terrainLayer.setCollisionByProperty({ collides: true });
+
+// 可视化碰撞（调试用）
+if (this.physics.world.debugGraphic) {
+    terrainLayer.renderDebug(this.physics.world.debugGraphic);
+}
+```
+
+### 5. 性能优化
+
+#### 对象池
+```typescript
+class CoinPool {
+    private pool: Coin[] = [];
+    
+    get(): Coin {
+        return this.pool.pop() || new Coin(scene, 0, 0);
+    }
+    
+    release(coin: Coin): void {
+        coin.setVisible(false);
+        coin.setActive(false);
+        this.pool.push(coin);
+    }
+}
+```
+
+#### 视锥剔除
+```typescript
+// 只更新可见范围内的对象
+const camera = this.cameras.main;
+objects.forEach(obj => {
+    const inView = camera.worldView.contains(obj.x, obj.y);
+    obj.setActive(inView);
+});
+```
+
+### 6. 自定义属性
+```typescript
+// 在Tiled中设置自定义属性
+{
+    "name": "frog",
+    "type": "enemy",
+    "properties": {
+        "health": 2,
+        "speed": 100,
+        "aggressive": true,
+        "patrolRadius": 150
+    }
+}
+
+// 在代码中读取
+const health = obj.properties?.health || 1;
+const speed = obj.properties?.speed || 80;
+```
+
+### 7. 地图验证
+```typescript
+private validateMap(): boolean {
+    const required = ['player', 'flag'];
+    const found = new Set();
+    
+    objectLayer.objects.forEach(obj => {
+        found.add(obj.name);
+        
+        // 检查对象位置
+        if (obj.y > this.map.heightInPixels) {
+            console.warn(`对象 ${obj.name} 在地图外`);
+        }
+    });
+    
+    // 确保必需对象存在
+    return required.every(name => found.has(name));
+}
+```
+
+## 开发最佳实践
+
+### 1. 物理调试
+```typescript
+// 开启调试模式查看碰撞体
+this.physics.world.createDebugGraphic();
+this.physics.world.debugGraphic.visible = true;
+```
+
+### 2. 对象生命周期
+```typescript
+class GameObject extends Phaser.Physics.Arcade.Sprite {
+    create(): void { /* 初始化 */ }
+    update(time: number, delta: number): void { /* 每帧更新 */ }
+    destroy(): void {
+        // 清理资源
+        this.removeAllListeners();
+        super.destroy();
+    }
+}
+```
+
+### 3. 事件系统
+```typescript
+// 发送事件
+this.scene.events.emit('coinCollected', { value: 10 });
+
+// 监听事件
+this.scene.events.on('coinCollected', (data) => {
+    this.updateScore(data.value);
+});
+```
+
+### 4. 状态管理
+```typescript
+enum PlayerState {
+    IDLE,
+    RUNNING,
+    JUMPING,
+    WALL_SLIDING,
+    CHARGING
+}
+
+class Player {
+    private state: PlayerState = PlayerState.IDLE;
+    
+    private updateState(): void {
+        if (this.body.velocity.x !== 0) {
+            this.state = PlayerState.RUNNING;
+        }
+        // ... 其他状态判断
+    }
+}
+```
+
+## 总结
+每个游戏对象都经过精心设计，物理特性服务于游戏体验。通过Tilemap的对象层，可以灵活配置关卡，实现不同的游戏挑战。开发时注意坐标转换、碰撞设置和性能优化，确保游戏运行流畅。
