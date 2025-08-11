@@ -1,11 +1,12 @@
 import { Scene, Physics } from 'phaser';
+import { ASSET_KEYS } from '../../config/AssetConfig';
 
 export class Key extends Physics.Arcade.Sprite {
     private collected: boolean = false;
     private originalY: number;
     
     constructor(scene: Scene, x: number, y: number) {
-        super(scene, x, y, 'key');
+        super(scene, x, y, ASSET_KEYS.IMAGES.KEY);
         
         scene.add.existing(this);
         scene.physics.add.existing(this, true); // static body

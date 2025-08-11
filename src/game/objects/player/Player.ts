@@ -1,4 +1,5 @@
 import { Scene, Physics } from 'phaser';
+import { ASSET_KEYS } from '../../config/AssetConfig';
 
 export class Player extends Physics.Arcade.Sprite {
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -28,7 +29,7 @@ export class Player extends Physics.Arcade.Sprite {
     private chargeBarBg: Phaser.GameObjects.Rectangle | null = null;
 
     constructor(scene: Scene, x: number, y: number) {
-        super(scene, x, y, 'player', 'idle/frame0000');
+        super(scene, x, y, ASSET_KEYS.ATLASES.PLAYER, 'idle/frame0000');
         
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -44,38 +45,38 @@ export class Player extends Physics.Arcade.Sprite {
         this.cursors = scene.input.keyboard!.createCursorKeys();
         
         this.createAnimations();
-        this.play('player-idle');
+        this.play(ASSET_KEYS.ANIMATIONS.PLAYER.IDLE);
         
         // 创建蓄力条（初始隐藏）
         this.createChargeBar();
     }
 
     private createAnimations(): void {
-        if (!this.scene.anims.exists('player-idle')) {
+        if (!this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.PLAYER.IDLE)) {
             this.scene.anims.create({
-                key: 'player-idle',
-                frames: [{ key: 'player', frame: 'idle/frame0000' }],
+                key: ASSET_KEYS.ANIMATIONS.PLAYER.IDLE,
+                frames: [{ key: ASSET_KEYS.ATLASES.PLAYER, frame: 'idle/frame0000' }],
                 frameRate: 10,
                 repeat: -1
             });
         }
 
-        if (!this.scene.anims.exists('player-walk')) {
+        if (!this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.PLAYER.WALK)) {
             this.scene.anims.create({
-                key: 'player-walk',
+                key: ASSET_KEYS.ANIMATIONS.PLAYER.WALK,
                 frames: [
-                    { key: 'player', frame: 'walk/frame0000' },
-                    { key: 'player', frame: 'walk/frame0001' }
+                    { key: ASSET_KEYS.ATLASES.PLAYER, frame: 'walk/frame0000' },
+                    { key: ASSET_KEYS.ATLASES.PLAYER, frame: 'walk/frame0001' }
                 ],
                 frameRate: 10,
                 repeat: -1
             });
         }
 
-        if (!this.scene.anims.exists('player-jump')) {
+        if (!this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.PLAYER.JUMP)) {
             this.scene.anims.create({
-                key: 'player-jump',
-                frames: [{ key: 'player', frame: 'jump/frame0000' }],
+                key: ASSET_KEYS.ANIMATIONS.PLAYER.JUMP,
+                frames: [{ key: ASSET_KEYS.ATLASES.PLAYER, frame: 'jump/frame0000' }],
                 frameRate: 10
             });
         }
@@ -83,7 +84,7 @@ export class Player extends Physics.Arcade.Sprite {
         if (!this.scene.anims.exists('player-duck')) {
             this.scene.anims.create({
                 key: 'player-duck',
-                frames: [{ key: 'player', frame: 'duck/frame0000' }],
+                frames: [{ key: ASSET_KEYS.ATLASES.PLAYER, frame: 'duck/frame0000' }],
                 frameRate: 10
             });
         }
@@ -92,8 +93,8 @@ export class Player extends Physics.Arcade.Sprite {
             this.scene.anims.create({
                 key: 'player-climb',
                 frames: [
-                    { key: 'player', frame: 'climb/frame0000' },
-                    { key: 'player', frame: 'climb/frame0001' }
+                    { key: ASSET_KEYS.ATLASES.PLAYER, frame: 'climb/frame0000' },
+                    { key: ASSET_KEYS.ATLASES.PLAYER, frame: 'climb/frame0001' }
                 ],
                 frameRate: 10,
                 repeat: -1
@@ -123,18 +124,18 @@ export class Player extends Physics.Arcade.Sprite {
                 this.setVelocityX(-speed);
                 this.setFlipX(true);
                 if (onGround && !this.cursors.down.isDown && !this.isCharging) {
-                    this.play('player-walk', true);
+                    this.play(ASSET_KEYS.ANIMATIONS.PLAYER.WALK, true);
                 }
             } else if (this.cursors.right.isDown) {
                 this.setVelocityX(speed);
                 this.setFlipX(false);
                 if (onGround && !this.cursors.down.isDown && !this.isCharging) {
-                    this.play('player-walk', true);
+                    this.play(ASSET_KEYS.ANIMATIONS.PLAYER.WALK, true);
                 }
             } else {
                 this.setVelocityX(0);
                 if (onGround && !this.cursors.down.isDown && !this.isCharging) {
-                    this.play('player-idle', true);
+                    this.play(ASSET_KEYS.ANIMATIONS.PLAYER.IDLE, true);
                 }
             }
         }
@@ -159,7 +160,7 @@ export class Player extends Physics.Arcade.Sprite {
         
         // 空中动画
         if (!onGround && !this.isWallSliding && this.isJumping) {
-            this.play('player-jump', true);
+            this.play(ASSET_KEYS.ANIMATIONS.PLAYER.JUMP, true);
         }
     }
 
@@ -285,7 +286,7 @@ export class Player extends Physics.Arcade.Sprite {
         this.setVelocityY(this.minJumpForce);
         this.jumpCount++;
         this.isJumping = true;
-        this.play('player-jump', true);
+        this.play(ASSET_KEYS.ANIMATIONS.PLAYER.JUMP, true);
     }
 
     // 墙跳
@@ -296,7 +297,7 @@ export class Player extends Physics.Arcade.Sprite {
         this.isWallSliding = false;
         this.isJumping = true;
         this.jumpCount = 1;
-        this.play('player-jump', true);
+        this.play(ASSET_KEYS.ANIMATIONS.PLAYER.JUMP, true);
         
         // 短暂禁用左右控制
         this.scene.time.delayedCall(200, () => {
@@ -324,7 +325,7 @@ export class Player extends Physics.Arcade.Sprite {
         this.jumpCount = 1;
         this.hideChargeBar();
         this.clearTint();
-        this.play('player-jump', true);
+        this.play(ASSET_KEYS.ANIMATIONS.PLAYER.JUMP, true);
         
         // 添加粒子效果
         if (chargePercent > 0.5) {
@@ -387,7 +388,7 @@ export class Player extends Physics.Arcade.Sprite {
 
     // 跳跃特效
     private createJumpEffect(): void {
-        const particles = this.scene.add.particles(this.x, this.y + 20, 'player', {
+        const particles = this.scene.add.particles(this.x, this.y + 20, ASSET_KEYS.ATLASES.PLAYER, {
             frame: 'idle/frame0000',
             scale: { start: 0.3, end: 0 },
             alpha: { start: 1, end: 0 },

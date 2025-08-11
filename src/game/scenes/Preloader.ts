@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { ASSET_KEYS, ASSET_PATHS } from '../config/AssetConfig';
 
 export class Preloader extends Scene
 {
@@ -10,7 +11,7 @@ export class Preloader extends Scene
     init ()
     {
         //  We loaded this image in our Boot Scene, so we can display it here
-        this.add.image(512, 384, 'background');
+        this.add.image(512, 384, ASSET_KEYS.IMAGES.BACKGROUND);
 
         //  A simple progress bar. This is the outline of the bar.
         this.add.rectangle(512, 384, 468, 32).setStrokeStyle(1, 0xffffff);
@@ -32,20 +33,24 @@ export class Preloader extends Scene
         //  Load the assets for the game - Replace with your own assets
         this.load.setPath('assets');
         
-        this.load.atlas('player', 'player/character_purple.png', 'player/character_purple.json');
-        this.load.atlas('frog', 'enemy/frog.png', 'enemy/frog.json');
-        this.load.image('platform', 'bg.png');
+        // Load atlases
+        for (const [key, paths] of Object.entries(ASSET_PATHS.ATLASES)) {
+            this.load.atlas(key, paths.texture, paths.atlas);
+        }
+        
+        // Load images
+        for (const [key, path] of Object.entries(ASSET_PATHS.IMAGES)) {
+            // Skip background as it's already loaded in Boot
+            if (key !== ASSET_KEYS.IMAGES.BACKGROUND) {
+                this.load.image(key, path);
+            }
+        }
         
         // Load tilemap
-        this.load.tilemapTiledJSON('tilemap', 'tilemap/scenes/game.json');
-        
-        // Load tileset images
-        this.load.image('terrain_grass_block_center', 'tilemap/tiles/terrain_grass_block_center.png');
-        this.load.image('terrain_grass_block_top', 'tilemap/tiles/terrain_grass_block_top.png');
-        this.load.image('spikes', 'tilemap/tiles/spikes.png');
-        this.load.image('flag', 'tilemap/tiles/flag_green_a.png');
-        this.load.image('coin', 'tilemap/tiles/coin_gold.png');
-        this.load.image('key', 'tilemap/tiles/hud_key_green.png');
+        this.load.tilemapTiledJSON(
+            ASSET_KEYS.TILEMAPS.GAME,
+            ASSET_PATHS.TILEMAPS[ASSET_KEYS.TILEMAPS.GAME]
+        );
     }
 
     create ()

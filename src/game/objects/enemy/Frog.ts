@@ -1,4 +1,5 @@
 import { Scene, Physics } from 'phaser';
+import { ASSET_KEYS } from '../../config/AssetConfig';
 
 export class Frog extends Physics.Arcade.Sprite {
     private moveSpeed: number = 50;
@@ -14,7 +15,7 @@ export class Frog extends Physics.Arcade.Sprite {
     private damageCooldown: number = 1000;
     
     constructor(scene: Scene, x: number, y: number) {
-        super(scene, x, y, 'frog', 'idle/frame0000');
+        super(scene, x, y, ASSET_KEYS.ATLASES.FROG, 'idle/frame0000');
         
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -32,8 +33,8 @@ export class Frog extends Physics.Arcade.Sprite {
         
         // 创建动画
         this.createAnimations();
-        if (this.scene.anims.exists('frog-idle')) {
-            this.play('frog-idle');
+        if (this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.IDLE)) {
+            this.play(ASSET_KEYS.ANIMATIONS.FROG.IDLE);
         }
         
         // 开始AI行为
@@ -42,10 +43,10 @@ export class Frog extends Physics.Arcade.Sprite {
     
     private createAnimations(): void {
         try {
-            if (!this.scene.anims.exists('frog-idle')) {
+            if (!this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.IDLE)) {
                 this.scene.anims.create({
-                    key: 'frog-idle',
-                    frames: this.scene.anims.generateFrameNames('frog', {
+                    key: ASSET_KEYS.ANIMATIONS.FROG.IDLE,
+                    frames: this.scene.anims.generateFrameNames(ASSET_KEYS.ATLASES.FROG, {
                         prefix: 'idle/frame',
                         suffix: '',
                         start: 0,
@@ -57,10 +58,10 @@ export class Frog extends Physics.Arcade.Sprite {
                 });
             }
             
-            if (!this.scene.anims.exists('frog-jump')) {
+            if (!this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.JUMP)) {
                 this.scene.anims.create({
-                    key: 'frog-jump',
-                    frames: this.scene.anims.generateFrameNames('frog', {
+                    key: ASSET_KEYS.ANIMATIONS.FROG.JUMP,
+                    frames: this.scene.anims.generateFrameNames(ASSET_KEYS.ATLASES.FROG, {
                         prefix: 'jump/frame',
                         suffix: '',
                         start: 0,
@@ -71,10 +72,10 @@ export class Frog extends Physics.Arcade.Sprite {
                 });
             }
             
-            if (!this.scene.anims.exists('frog-rest')) {
+            if (!this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.REST)) {
                 this.scene.anims.create({
-                    key: 'frog-rest',
-                    frames: this.scene.anims.generateFrameNames('frog', {
+                    key: ASSET_KEYS.ANIMATIONS.FROG.REST,
+                    frames: this.scene.anims.generateFrameNames(ASSET_KEYS.ATLASES.FROG, {
                         prefix: 'rest/frame',
                         suffix: '',
                         start: 0,
@@ -128,14 +129,14 @@ export class Frog extends Physics.Arcade.Sprite {
             this.setFlipX(this.direction < 0);
             
             // 播放跳跃动画（带安全检查）
-            if (this.scene && this.scene.anims.exists('frog-jump')) {
-                this.play('frog-jump');
+            if (this.scene && this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.JUMP)) {
+                this.play(ASSET_KEYS.ANIMATIONS.FROG.JUMP);
             }
             
             // 跳跃后恢复idle动画
             this.scene.time.delayedCall(500, () => {
-                if (this.active && this.scene && this.scene.anims.exists('frog-idle')) {
-                    this.play('frog-idle');
+                if (this.active && this.scene && this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.IDLE)) {
+                    this.play(ASSET_KEYS.ANIMATIONS.FROG.IDLE);
                 }
             });
         }
@@ -146,15 +147,15 @@ export class Frog extends Physics.Arcade.Sprite {
         this.setVelocity(0, 0);
         
         // 播放休息动画（带安全检查）
-        if (this.scene && this.scene.anims.exists('frog-rest')) {
-            this.play('frog-rest');
+        if (this.scene && this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.REST)) {
+            this.play(ASSET_KEYS.ANIMATIONS.FROG.REST);
         }
         
         // 休息3秒
         this.scene.time.delayedCall(3000, () => {
             this.isResting = false;
-            if (this.scene && this.scene.anims.exists('frog-idle')) {
-                this.play('frog-idle');
+            if (this.scene && this.scene.anims.exists(ASSET_KEYS.ANIMATIONS.FROG.IDLE)) {
+                this.play(ASSET_KEYS.ANIMATIONS.FROG.IDLE);
             }
         });
     }

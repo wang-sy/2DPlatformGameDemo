@@ -1,4 +1,5 @@
 import { Scene, Physics } from 'phaser';
+import { ASSET_KEYS } from '../../config/AssetConfig';
 
 export class Spike extends Physics.Arcade.Sprite {
     private canDamage: boolean = true;
@@ -6,7 +7,7 @@ export class Spike extends Physics.Arcade.Sprite {
     private damageCooldown: number = 1000; // 1秒冷却时间
 
     constructor(scene: Scene, x: number, y: number) {
-        super(scene, x, y, 'spikes');
+        super(scene, x, y, ASSET_KEYS.IMAGES.SPIKES);
         
         scene.add.existing(this);
         scene.physics.add.existing(this, true); // true = static body

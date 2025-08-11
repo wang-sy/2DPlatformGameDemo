@@ -5,6 +5,7 @@ import { Flag } from '../objects/flag/Flag';
 import { Coin } from '../objects/coin/Coin';
 import { Key } from '../objects/key/Key';
 import { Frog } from '../objects/enemy/Frog';
+import { ASSET_KEYS, TILEMAP_OBJECTS, TILEMAP_TILESETS } from '../config/AssetConfig';
 
 export class Game extends Scene
 {
@@ -37,11 +38,11 @@ export class Game extends Scene
         this.camera.setBackgroundColor(0x87CEEB);
 
         // 创建tilemap
-        this.map = this.make.tilemap({ key: 'tilemap' });
+        this.map = this.make.tilemap({ key: ASSET_KEYS.TILEMAPS.GAME });
         
         // 添加tilesets到map（现在只需要地形tiles）
-        const terrainCenter = this.map.addTilesetImage('terrain_grass_block_center', 'terrain_grass_block_center');
-        const terrainTop = this.map.addTilesetImage('terrain_grass_block_top', 'terrain_grass_block_top');
+        const terrainCenter = this.map.addTilesetImage(TILEMAP_TILESETS.TERRAIN_GRASS_CENTER, ASSET_KEYS.IMAGES.TERRAIN_GRASS_CENTER);
+        const terrainTop = this.map.addTilesetImage(TILEMAP_TILESETS.TERRAIN_GRASS_TOP, ASSET_KEYS.IMAGES.TERRAIN_GRASS_TOP);
         
         // 创建spike组、coin组和frog组
         this.spikesGroup = this.physics.add.staticGroup();
@@ -66,23 +67,23 @@ export class Game extends Scene
                 const x = obj.x + obj.width / 2;
                 const y = obj.y + obj.height / 2;
                 
-                if (obj.type === 'enemy' && obj.name === 'frog') {
+                if (obj.type === 'enemy' && obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
                     // 创建青蛙敌人
                     const frog = new Frog(this, x, y);
                     this.frogsGroup.add(frog);
-                } else if (obj.type === 'collectible' && obj.name === 'coin') {
+                } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
                     // 创建金币
                     const coin = new Coin(this, x, y);
                     this.coinsGroup.add(coin);
                     this.totalCoins++;
-                } else if (obj.type === 'collectible' && obj.name === 'key') {
+                } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
                     // 创建钥匙
                     this.keyObject = new Key(this, x, y);
-                } else if (obj.type === 'hazard' && obj.name === 'spike') {
+                } else if (obj.type === 'hazard' && obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
                     // 创建尖刺
                     const spike = new Spike(this, x, y);
                     this.spikesGroup.add(spike);
-                } else if (obj.type === 'goal' && obj.name === 'flag') {
+                } else if (obj.type === 'goal' && obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
                     // 创建终点旗帜
                     this.flag = new Flag(this, x, y);
                 }
@@ -161,7 +162,7 @@ export class Game extends Scene
         this.updateCoinUI();
         
         // 创建钥匙图标（初始隐藏）
-        this.keyIcon = this.add.image(16, 110, 'key');
+        this.keyIcon = this.add.image(16, 110, ASSET_KEYS.IMAGES.KEY);
         this.keyIcon.setScale(0.6);
         this.keyIcon.setScrollFactor(0);
         this.keyIcon.setVisible(false);
