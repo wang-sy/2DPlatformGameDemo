@@ -1,5 +1,19 @@
 # 游戏对象开发文档
 
+## 🆕 素材配置系统
+
+本项目使用统一的素材配置系统 (`src/game/config/AssetConfig.ts`)，所有素材key都集中管理，避免重复定义和拼写错误。
+
+```typescript
+import { ASSET_KEYS } from '../../config/AssetConfig';
+
+// 使用配置中的key创建精灵
+super(scene, x, y, ASSET_KEYS.IMAGES.COIN);
+
+// 播放动画
+this.play(ASSET_KEYS.ANIMATIONS.PLAYER.IDLE);
+```
+
 ## 📦 Player 玩家角色
 
 ### 开发思路
@@ -17,6 +31,17 @@ chargeJumpMultiplier: 1.8 // 蓄力跳跃倍数
 // 碰撞体设置
 this.body.setSize(16, 28);  // 碰撞体尺寸
 this.body.setOffset(4, 4);  // 碰撞体偏移
+```
+
+### 素材配置
+```typescript
+// 在AssetConfig.ts中定义
+ASET_KEYS.ATLASES.PLAYER = 'player'
+ASSET_KEYS.ANIMATIONS.PLAYER = {
+    IDLE: 'player-idle',
+    WALK: 'player-walk',
+    JUMP: 'player-jump'
+}
 ```
 
 ### 核心机制
@@ -88,9 +113,11 @@ if (this.isCharging) {
 
 #### 在Game场景中创建
 ```typescript
-if (obj.type === 'spawn' && obj.name === 'player') {
-    this.player = new Player(this, x, y - 16);  // y偏移避免卡入地面
-}
+import { TILEMAP_OBJECTS } from '../config/AssetConfig';
+
+// 注意：玩家对象通常直接创建，不通过tilemap对象
+this.player = new Player(this, 150, 1050);
+this.player.setName('player');
 ```
 
 ### 碰撞设置
@@ -120,6 +147,17 @@ jumpInterval: 2000       // 跳跃间隔(ms)
 // 碰撞体
 this.body.setSize(24, 24);
 this.body.setBounce(0.2);  // 轻微弹性
+```
+
+### 素材配置
+```typescript
+// 在AssetConfig.ts中定义
+ASSET_KEYS.ATLASES.FROG = 'frog'
+ASSET_KEYS.ANIMATIONS.FROG = {
+    IDLE: 'frog-idle',
+    JUMP: 'frog-jump',
+    REST: 'frog-rest'
+}
 ```
 
 ### AI行为
@@ -166,7 +204,7 @@ if (playerFromAbove) {
 ### Tilemap集成
 ```json
 {
-    "name": "frog",
+    "name": "frog",  // 对应 TILEMAP_OBJECTS.ENEMY.FROG
     "type": "enemy",
     "x": 300,
     "y": 350,
@@ -177,12 +215,26 @@ if (playerFromAbove) {
 }
 ```
 
+```typescript
+// 在Game场景中处理
+if (obj.type === 'enemy' && obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
+    const frog = new Frog(this, x, y);
+    this.frogsGroup.add(frog);
+}
+```
+
 ---
 
 ## 🗡️ Spike 尖刺陷阱
 
 ### 开发思路
 Spike作为静态危险物，设计简单但位置摆放讲究。通过视觉反馈（闪烁）和无敌时间避免连续伤害。
+
+### 素材配置
+```typescript
+// 在AssetConfig.ts中定义
+ASSET_KEYS.IMAGES.SPIKES = 'spikes'
+```
 
 ### 物理特性
 ```typescript
@@ -211,7 +263,7 @@ private handleSpikeCollision(player: Player, spike: Spike) {
 ### Tilemap集成
 ```json
 {
-    "name": "spike",
+    "name": "spike",  // 对应 TILEMAP_OBJECTS.HAZARD.SPIKE
     "type": "hazard",
     "x": 200,
     "y": 464,  // 确保在平台表面
@@ -219,6 +271,14 @@ private handleSpikeCollision(player: Player, spike: Spike) {
         "damage": 1,
         "knockback": true
     }
+}
+```
+
+```typescript
+// 在Game场景中处理
+if (obj.type === 'hazard' && obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
+    const spike = new Spike(this, x, y);
+    this.spikesGroup.add(spike);
 }
 ```
 
@@ -233,6 +293,12 @@ private handleSpikeCollision(player: Player, spike: Spike) {
 
 ### 开发思路
 Coin提供可选目标，增加重玩价值。通过旋转动画和粒子效果提升收集满足感。
+
+### 素材配置
+```typescript
+// 在AssetConfig.ts中定义
+ASSET_KEYS.IMAGES.COIN = 'coin'
+```
 
 ### 物理特性
 ```typescript
@@ -281,7 +347,7 @@ private collectCoin(player: Player, coin: Coin) {
 ### Tilemap集成
 ```json
 {
-    "name": "coin",
+    "name": "coin",  // 对应 TILEMAP_OBJECTS.COLLECTIBLE.COIN
     "type": "collectible",
     "x": 150,
     "y": 400,
@@ -289,6 +355,14 @@ private collectCoin(player: Player, coin: Coin) {
         "value": 10,
         "respawn": false
     }
+}
+```
+
+```typescript
+// 在Game场景中处理
+if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
+    const coin = new Coin(this, x, y);
+    this.coinsGroup.add(coin);
 }
 ```
 
@@ -304,6 +378,12 @@ private collectCoin(player: Player, coin: Coin) {
 
 ### 开发思路
 Key作为进度门槛，强制玩家探索关卡。视觉上更醒目，确保玩家注意到。
+
+### 素材配置
+```typescript
+// 在AssetConfig.ts中定义
+ASSET_KEYS.IMAGES.KEY = 'key'
+```
 
 ### 物理特性
 ```typescript
@@ -343,7 +423,7 @@ private collectKey(player: Player, key: Key) {
 ### Tilemap集成
 ```json
 {
-    "name": "key",
+    "name": "key",  // 对应 TILEMAP_OBJECTS.COLLECTIBLE.KEY
     "type": "collectible",
     "x": 500,
     "y": 200,
@@ -354,12 +434,25 @@ private collectKey(player: Player, key: Key) {
 }
 ```
 
+```typescript
+// 在Game场景中处理
+if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
+    this.keyObject = new Key(this, x, y);
+}
+```
+
 ---
 
 ## 🚩 Flag 终点旗帜
 
 ### 开发思路
 Flag作为关卡目标，需要明显的视觉标识和达成反馈。飘动动画增加生动感。
+
+### 素材配置
+```typescript
+// 在AssetConfig.ts中定义
+ASSET_KEYS.IMAGES.FLAG = 'flag'
+```
 
 ### 物理特性
 ```typescript
@@ -401,7 +494,7 @@ private checkVictory(player: Player, flag: Flag) {
 ### Tilemap集成
 ```json
 {
-    "name": "flag",
+    "name": "flag",  // 对应 TILEMAP_OBJECTS.GOAL.FLAG
     "type": "goal",
     "x": 900,
     "y": 100,
@@ -409,6 +502,13 @@ private checkVictory(player: Player, flag: Flag) {
         "requiresKey": true,
         "nextLevel": "level2"
     }
+}
+```
+
+```typescript
+// 在Game场景中处理
+if (obj.type === 'goal' && obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
+    this.flag = new Flag(this, x, y);
 }
 ```
 
@@ -452,22 +552,27 @@ objectLayer.objects.forEach((obj: any) => {
 
 #### 对象工厂模式
 ```typescript
+import { TILEMAP_OBJECTS } from '../config/AssetConfig';
+
 private createGameObject(obj: any) {
     // 坐标转换（Tiled使用左上角，Phaser使用中心点）
     const x = obj.x + obj.width / 2;
-    const y = obj.y - obj.height / 2;  // 注意y轴方向
+    const y = obj.y + obj.height / 2;  // 正确的y坐标转换
     
-    switch(obj.type) {
-        case 'spawn':
-            return this.createPlayer(x, y);
-        case 'enemy':
-            return this.createEnemy(x, y, obj.name);
-        case 'collectible':
-            return this.createCollectible(x, y, obj.name);
-        case 'hazard':
-            return this.createHazard(x, y, obj.name);
-        case 'goal':
-            return this.createGoal(x, y);
+    // 使用配置中的对象名称
+    if (obj.type === 'enemy' && obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
+        const frog = new Frog(this, x, y);
+        this.frogsGroup.add(frog);
+    } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
+        const coin = new Coin(this, x, y);
+        this.coinsGroup.add(coin);
+    } else if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.KEY) {
+        this.keyObject = new Key(this, x, y);
+    } else if (obj.type === 'hazard' && obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
+        const spike = new Spike(this, x, y);
+        this.spikesGroup.add(spike);
+    } else if (obj.type === 'goal' && obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
+        this.flag = new Flag(this, x, y);
     }
 }
 ```
@@ -488,9 +593,9 @@ private createGameObject(obj: any) {
 ```typescript
 // Tiled对象坐标 -> Phaser精灵坐标
 phaserX = tiledX + tiledWidth / 2;
-phaserY = tiledY + tiledHeight / 2;
+phaserY = tiledY + tiledHeight / 2;  // 注意：是加不是减
 
-// 确保对象在平台上方
+// 确保对象在平台上方（可选）
 if (needsGroundAlignment) {
     phaserY = platformY - objectHeight / 2;
 }

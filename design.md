@@ -28,6 +28,8 @@ template-vite-ts/
 ├── src/
 │   ├── game/
 │   │   ├── main.ts                  # 游戏配置和初始化
+│   │   ├── config/
+│   │   │   └── AssetConfig.ts       # 🆕 统一素材配置中心
 │   │   ├── scenes/
 │   │   │   ├── Boot.ts              # 启动场景
 │   │   │   ├── Preloader.ts         # 资源预加载场景
@@ -54,6 +56,73 @@ template-vite-ts/
 │   └── config.dev.mjs               # Vite开发配置
 ├── package.json
 └── index.html                       # HTML入口
+```
+
+## 🆕 素材配置系统
+
+### **统一配置中心** (`src/game/config/AssetConfig.ts`)
+
+为了解决素材key在多处重复定义的问题，我们引入了统一的配置系统：
+
+```typescript
+export const ASSET_KEYS = {
+    IMAGES: {
+        BACKGROUND: 'background',
+        COIN: 'coin',
+        KEY: 'key',
+        FLAG: 'flag',
+        SPIKES: 'spikes',
+        // ...
+    },
+    ATLASES: {
+        PLAYER: 'player',
+        FROG: 'frog'
+    },
+    TILEMAPS: {
+        GAME: 'tilemap'
+    },
+    ANIMATIONS: {
+        PLAYER: {
+            IDLE: 'player-idle',
+            WALK: 'player-walk',
+            JUMP: 'player-jump'
+        },
+        FROG: {
+            IDLE: 'frog-idle',
+            JUMP: 'frog-jump',
+            REST: 'frog-rest'
+        }
+    }
+} as const;
+
+export const ASSET_PATHS = {
+    IMAGES: {
+        [ASSET_KEYS.IMAGES.COIN]: 'tilemap/tiles/coin_gold.png',
+        // ...
+    },
+    // ...
+};
+```
+
+**优势**：
+- ✅ **单一数据源**：所有素材key集中管理
+- ✅ **类型安全**：TypeScript提供完整的类型检查
+- ✅ **智能提示**：IDE自动完成和重构支持
+- ✅ **易于维护**：新增素材只需修改一处
+- ✅ **避免拼写错误**：使用常量而非字符串字面量
+
+**使用示例**：
+```typescript
+// 在Preloader中自动加载所有配置的资源
+for (const [key, paths] of Object.entries(ASSET_PATHS.ATLASES)) {
+    this.load.atlas(key, paths.texture, paths.atlas);
+}
+
+// 在游戏对象中使用
+super(scene, x, y, ASSET_KEYS.IMAGES.COIN);
+
+// 播放动画
+this.play(ASSET_KEYS.ANIMATIONS.PLAYER.IDLE);
 ```
 
 ## 🔧 核心文件详解
@@ -88,12 +157,29 @@ const config: Phaser.Types.Core.GameConfig = {
 
 **关键代码段**:
 ```typescript
+import { ASSET_KEYS, TILEMAP_OBJECTS, TILEMAP_TILESETS } from '../config/AssetConfig';
+
+// 使用配置创建tilemap
+this.map = this.make.tilemap({ key: ASSET_KEYS.TILEMAPS.GAME });
+
+// 添加tilesets
+const terrainCenter = this.map.addTilesetImage(
+    TILEMAP_TILESETS.TERRAIN_GRASS_CENTER, 
+    ASSET_KEYS.IMAGES.TERRAIN_GRASS_CENTER
+);
+
 // 从object layer创建对象
 const objectLayer = this.map.getObjectLayer('Objects');
 objectLayer.objects.forEach((obj: any) => {
-    const x = obj.x + obj.width / 2;  // 重要：对象坐标需要调整到中心
+    const x = obj.x + obj.width / 2;
     const y = obj.y + obj.height / 2;
-    // 根据type创建不同对象...
+    
+    // 使用配置中的对象类型
+    if (obj.type === 'collectible' && obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
+        const coin = new Coin(this, x, y);
+        this.coinsGroup.add(coin);
+    }
+    // ...
 });
 ```
 
@@ -309,22 +395,46 @@ player.on('death', () => this.scene.restart());
 
 ### 添加新的游戏对象
 
-1. **创建对象类**
+1. **更新配置文件**
+```typescript
+// src/game/config/AssetConfig.ts
+export const ASSET_KEYS = {
+    IMAGES: {
+        // ...
+        NEW_OBJECT: 'newobject'  // 添加新的key
+    }
+};
+
+export const ASSET_PATHS = {
+    IMAGES: {
+        // ...
+        [ASSET_KEYS.IMAGES.NEW_OBJECT]: 'path/to/image.png'
+    }
+};
+
+export const TILEMAP_OBJECTS = {
+    // ...
+    NEW_CATEGORY: {
+        NEW_OBJECT: 'newobject'  // tilemap中的对象名
+    }
+};
+```
+
+2. **创建对象类**
 ```typescript
 // src/game/objects/newobject/NewObject.ts
+import { ASSET_KEYS } from '../../config/AssetConfig';
+
 export class NewObject extends Physics.Arcade.Sprite {
     constructor(scene: Scene, x: number, y: number) {
-        super(scene, x, y, 'texture-key');
+        super(scene, x, y, ASSET_KEYS.IMAGES.NEW_OBJECT);
         scene.add.existing(this);
-        scene.physics.add.existing(this, true); // true for static
+        scene.physics.add.existing(this, true);
     }
 }
 ```
 
-2. **在Preloader中加载资源**
-```typescript
-this.load.image('newobject', 'path/to/image.png');
-```
+3. **资源会自动在Preloader中加载**（无需手动添加）
 
 3. **在Game场景中处理**
 ```typescript
