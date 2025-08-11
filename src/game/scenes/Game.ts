@@ -101,7 +101,7 @@ export class Game extends Scene
         this.cameras.main.setBounds(0, 0, mapWidth, mapHeight);
         
         // 设置世界边界
-        this.physics.world.setBounds(0, 0, mapWidth, mapHeight, true, true, true, false);
+        this.physics.world.setBounds(0, 0, mapWidth, mapHeight, true, true, false, false);
 
         // 创建血量UI
         this.createHealthUI();
