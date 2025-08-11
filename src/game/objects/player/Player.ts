@@ -109,6 +109,9 @@ export class Player extends Physics.Arcade.Sprite {
         const touchingLeft = body.blocked.left;
         const touchingRight = body.blocked.right;
         
+        // 检查并修复卡墙问题
+        this.checkAndFixWallStuck();
+        
         // 检测抓墙状态
         this.checkWallSlide(onGround, touchingLeft, touchingRight);
         
@@ -400,5 +403,87 @@ export class Player extends Physics.Arcade.Sprite {
         this.scene.time.delayedCall(500, () => {
             particles.destroy();
         });
+    }
+    
+    // 检查并修复卡墙问题
+    private checkAndFixWallStuck(): void {
+        // 获取场景中的tilemap layer
+        const gameScene = this.scene as any;
+        const tilemapLayer = gameScene.platforms;
+        
+        if (!tilemapLayer) return;
+        
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        
+        // 获取玩家的边界框
+        const playerBounds = {
+            left: this.x - body.width / 2,
+            right: this.x + body.width / 2,
+            top: this.y - body.height / 2,
+            bottom: this.y + body.height / 2
+        };
+        
+        // 转换为tile坐标
+        const tileSize = 32; // 假设tile大小为32x32
+        const leftTile = Math.floor(playerBounds.left / tileSize);
+        const rightTile = Math.floor(playerBounds.right / tileSize);
+        const topTile = Math.floor(playerBounds.top / tileSize);
+        const bottomTile = Math.floor(playerBounds.bottom / tileSize);
+        
+        // 检查周围的tiles
+        let pushX = 0;
+        let pushY = 0;
+        let stuckCount = 0;
+        
+        for (let y = topTile; y <= bottomTile; y++) {
+            for (let x = leftTile; x <= rightTile; x++) {
+                const tile = tilemapLayer.getTileAt(x, y);
+                
+                if (tile && tile.collides) {
+                    stuckCount++;
+                    
+                    // 计算tile的中心
+                    const tileCenterX = tile.pixelX + tileSize / 2;
+                    const tileCenterY = tile.pixelY + tileSize / 2;
+                    
+                    // 计算玩家中心到tile中心的向量
+                    const dx = this.x - tileCenterX;
+                    const dy = this.y - tileCenterY;
+                    
+                    // 计算重叠区域
+                    const overlapX = (body.width / 2 + tileSize / 2) - Math.abs(dx);
+                    const overlapY = (body.height / 2 + tileSize / 2) - Math.abs(dy);
+                    
+                    // 如果有重叠，计算推出方向
+                    if (overlapX > 0 && overlapY > 0) {
+                        // 选择最小的推出距离
+                        if (overlapX < overlapY) {
+                            // 水平推出
+                            pushX += dx > 0 ? overlapX : -overlapX;
+                        } else {
+                            // 垂直推出
+                            pushY += dy > 0 ? overlapY : -overlapY;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 如果玩家卡在墙里，推出去
+        if (stuckCount > 0 && (pushX !== 0 || pushY !== 0)) {
+            // 限制推出速度，避免瞬移
+            const maxPush = 5;
+            pushX = Phaser.Math.Clamp(pushX, -maxPush, maxPush);
+            pushY = Phaser.Math.Clamp(pushY, -maxPush, maxPush);
+            
+            // 应用推出力
+            this.x += pushX;
+            this.y += pushY;
+            
+            // 如果推出力很大，说明严重卡墙，重置速度
+            if (Math.abs(pushX) > 3 || Math.abs(pushY) > 3) {
+                body.setVelocity(pushX * 10, pushY * 10);
+            }
+        }
     }
 }
