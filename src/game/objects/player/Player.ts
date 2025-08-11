@@ -1,5 +1,5 @@
 import { Scene, Physics } from 'phaser';
-import { ASSET_KEYS } from '../../config/AssetConfig';
+import { ASSET_KEYS, TILEMAP_LAYERS } from '../../config/AssetConfig';
 
 export class Player extends Physics.Arcade.Sprite {
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -407,9 +407,9 @@ export class Player extends Physics.Arcade.Sprite {
     
     // 检查并修复卡墙问题
     private checkAndFixWallStuck(): void {
-        // 获取场景中的tilemap layer
+        // 获取场景中的地形图层
         const gameScene = this.scene as any;
-        const tilemapLayer = gameScene.platforms;
+        const tilemapLayer = gameScene.platforms; // 这是地形碰撞层
         
         if (!tilemapLayer) return;
         

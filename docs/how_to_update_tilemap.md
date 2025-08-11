@@ -473,6 +473,61 @@ A: 检查：
 2. 精灵图集的帧名是否正确
 3. 动画是否已创建（检查 `anims.exists()`）
 
+## 🏗️ 配置化开发最佳实践
+
+### 新增配置项：对象类型和图层
+
+除了素材配置，我们还新增了以下配置项来提高代码的可维护性：
+
+```typescript
+// src/game/config/AssetConfig.ts
+
+// 对象类型定义 - 用于判断tilemap中的对象类型
+export const OBJECT_TYPES = {
+    PLAYER: 'player',
+    ENEMY: 'enemy',
+    COLLECTIBLE: 'collectible',
+    HAZARD: 'hazard',
+    GOAL: 'goal'
+} as const;
+
+// 图层名称定义 - 明确各图层的用途
+export const TILEMAP_LAYERS = {
+    TERRAIN: 'Level1',      // 地形图层（碰撞层）
+    OBJECTS: 'Objects',     // 对象图层
+    BACKGROUND: 'Background', // 背景图层
+    FOREGROUND: 'Foreground'  // 前景图层
+} as const;
+
+// 碰撞瓷砖定义 - 指定哪些瓷砖有碰撞
+export const COLLISION_TILES = {
+    TERRAIN_TILES: [1, 2]  // 可碰撞的地形瓷砖ID
+} as const;
+```
+
+### 使用示例
+
+```typescript
+// 创建地形层时使用配置
+const layer = this.map.createLayer(TILEMAP_LAYERS.TERRAIN, allTilesets);
+layer.setCollision(COLLISION_TILES.TERRAIN_TILES);
+
+// 判断对象类型时使用配置
+if (obj.type === OBJECT_TYPES.ENEMY) {
+    // 处理敌人对象
+}
+
+// 获取对象层时使用配置
+const objectLayer = this.map?.getObjectLayer(TILEMAP_LAYERS.OBJECTS);
+```
+
+### 配置化的优势
+
+1. **避免魔法字符串**：所有字符串常量都有明确定义
+2. **集中管理**：修改一处，全局生效
+3. **类型安全**：TypeScript提供完整的类型检查
+4. **易于扩展**：添加新类型只需在配置中添加
+
 ## 🎯 总结
 
 通过统一的配置系统，我们实现了：
@@ -480,5 +535,6 @@ A: 检查：
 - ✅ 类型安全，IDE智能提示
 - ✅ 易于维护，修改一处即可
 - ✅ 自动加载，减少手动工作
+- ✅ 配置化管理，提高代码质量
 
 遵循本文档的步骤，你可以轻松地添加、修改和管理游戏素材，保持代码的整洁和可维护性。

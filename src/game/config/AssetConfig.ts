@@ -73,7 +73,26 @@ export const TILEMAP_OBJECTS = {
     }
 } as const;
 
+export const OBJECT_TYPES = {
+    PLAYER: 'player',
+    ENEMY: 'enemy',
+    COLLECTIBLE: 'collectible',
+    HAZARD: 'hazard',
+    GOAL: 'goal'
+} as const;
+
 export const TILEMAP_TILESETS = {
     TERRAIN_GRASS_CENTER: 'terrain_grass_block_center',
     TERRAIN_GRASS_TOP: 'terrain_grass_block_top'
+} as const;
+
+export const TILEMAP_LAYERS = {
+    TERRAIN: 'Level1',  // 地形图层
+    OBJECTS: 'Objects',  // 对象图层
+    BACKGROUND: 'Background',  // 背景图层
+    FOREGROUND: 'Foreground'  // 前景图层
+} as const;
+
+export const COLLISION_TILES = {
+    TERRAIN_TILES: [1, 2]  // 可碰撞的地形瓷砖ID
 } as const;

@@ -5,14 +5,14 @@ import { Flag } from '../objects/flag/Flag';
 import { Coin } from '../objects/coin/Coin';
 import { Key } from '../objects/key/Key';
 import { Frog } from '../objects/enemy/Frog';
-import { ASSET_KEYS, TILEMAP_OBJECTS, TILEMAP_TILESETS } from '../config/AssetConfig';
+import { ASSET_KEYS, TILEMAP_OBJECTS, TILEMAP_TILESETS, OBJECT_TYPES, TILEMAP_LAYERS, COLLISION_TILES } from '../config/AssetConfig';
 
 export class Game extends Scene
 {
     camera: Phaser.Cameras.Scene2D.Camera;
     background: Phaser.GameObjects.Image;
     player: Player;
-    platforms: Phaser.Tilemaps.TilemapLayer | null = null;
+    platforms: Phaser.Tilemaps.TilemapLayer | null = null;  // 地形碰撞层
     spikesGroup: Phaser.Physics.Arcade.StaticGroup;
     coinsGroup: Phaser.Physics.Arcade.StaticGroup;
     frogsGroup: Phaser.Physics.Arcade.Group;
@@ -44,13 +44,13 @@ export class Game extends Scene
         const terrainCenter = this.map.addTilesetImage(TILEMAP_TILESETS.TERRAIN_GRASS_CENTER, ASSET_KEYS.IMAGES.TERRAIN_GRASS_CENTER);
         const terrainTop = this.map.addTilesetImage(TILEMAP_TILESETS.TERRAIN_GRASS_TOP, ASSET_KEYS.IMAGES.TERRAIN_GRASS_TOP);
 
-        // 创建图层 - 只使用地形tilesets
+        // 创建地形图层 - 使用配置的图层名称
         const allTilesets = [terrainCenter!, terrainTop!];
-        const layer = this.map.createLayer('Level1', allTilesets, 0, 0);
+        const layer = this.map.createLayer(TILEMAP_LAYERS.TERRAIN, allTilesets, 0, 0);
         
         if (layer) {
-            // 设置碰撞 - tiles 1和2是平台
-            layer.setCollision([1, 2]); // 草地块
+            // 设置碰撞 - 使用配置的碰撞瓷砖
+            layer.setCollision(COLLISION_TILES.TERRAIN_TILES);
             this.platforms = layer;
         }
 
@@ -117,8 +117,8 @@ export class Game extends Scene
     }
 
     private createGameObjectsFromObjectLayer(): void {
-        // 获取object layer
-        const objectLayer = this.map?.getObjectLayer('Objects');
+        // 获取object layer - 使用配置的图层名称
+        const objectLayer = this.map?.getObjectLayer(TILEMAP_LAYERS.OBJECTS);
         if (!objectLayer) return;
         
         // 遍历所有对象并创建相应的游戏对象
@@ -134,19 +134,19 @@ export class Game extends Scene
     
     private createGameObjectByType(obj: any, x: number, y: number): void {
         // 玩家类型
-        if (obj.type === 'player' || obj.name === TILEMAP_OBJECTS.PLAYER) {
+        if (obj.type === OBJECT_TYPES.PLAYER || obj.name === TILEMAP_OBJECTS.PLAYER) {
             this.player = new Player(this, x, y);
             this.player.setName('player');
         }
         // 敌人类型
-        else if (obj.type === 'enemy') {
+        else if (obj.type === OBJECT_TYPES.ENEMY) {
             if (obj.name === TILEMAP_OBJECTS.ENEMY.FROG) {
                 const frog = new Frog(this, x, y);
                 this.frogsGroup.add(frog);
             }
         }
         // 收集物类型
-        else if (obj.type === 'collectible') {
+        else if (obj.type === OBJECT_TYPES.COLLECTIBLE) {
             if (obj.name === TILEMAP_OBJECTS.COLLECTIBLE.COIN) {
                 const coin = new Coin(this, x, y);
                 this.coinsGroup.add(coin);
@@ -156,14 +156,14 @@ export class Game extends Scene
             }
         }
         // 危险物类型
-        else if (obj.type === 'hazard') {
+        else if (obj.type === OBJECT_TYPES.HAZARD) {
             if (obj.name === TILEMAP_OBJECTS.HAZARD.SPIKE) {
                 const spike = new Spike(this, x, y);
                 this.spikesGroup.add(spike);
             }
         }
         // 目标类型
-        else if (obj.type === 'goal') {
+        else if (obj.type === OBJECT_TYPES.GOAL) {
             if (obj.name === TILEMAP_OBJECTS.GOAL.FLAG) {
                 this.flag = new Flag(this, x, y);
             }

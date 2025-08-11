@@ -779,5 +779,157 @@ class Player {
 }
 ```
 
+## 碰撞检测与防卡墙系统
+
+### 防卡墙机制实现
+
+当角色因为物理碰撞或其他原因卡在墙体内部时，需要自动推出系统：
+
+```typescript
+// 检查并修复卡墙问题
+private checkAndFixWallStuck(): void {
+    const gameScene = this.scene as any;
+    const tilemapLayer = gameScene.platforms; // 地形碰撞层
+    
+    if (!tilemapLayer) return;
+    
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    
+    // 获取玩家的边界框
+    const playerBounds = {
+        left: this.x - body.width / 2,
+        right: this.x + body.width / 2,
+        top: this.y - body.height / 2,
+        bottom: this.y + body.height / 2
+    };
+    
+    // 转换为tile坐标
+    const tileSize = 32;
+    const leftTile = Math.floor(playerBounds.left / tileSize);
+    const rightTile = Math.floor(playerBounds.right / tileSize);
+    const topTile = Math.floor(playerBounds.top / tileSize);
+    const bottomTile = Math.floor(playerBounds.bottom / tileSize);
+    
+    // 检查周围的tiles
+    let pushX = 0;
+    let pushY = 0;
+    let stuckCount = 0;
+    
+    for (let y = topTile; y <= bottomTile; y++) {
+        for (let x = leftTile; x <= rightTile; x++) {
+            const tile = tilemapLayer.getTileAt(x, y);
+            
+            if (tile && tile.collides) {
+                stuckCount++;
+                
+                // 计算推出方向
+                const tileCenterX = tile.pixelX + tileSize / 2;
+                const tileCenterY = tile.pixelY + tileSize / 2;
+                const dx = this.x - tileCenterX;
+                const dy = this.y - tileCenterY;
+                
+                // 计算重叠区域
+                const overlapX = (body.width / 2 + tileSize / 2) - Math.abs(dx);
+                const overlapY = (body.height / 2 + tileSize / 2) - Math.abs(dy);
+                
+                // 选择最小的推出距离
+                if (overlapX > 0 && overlapY > 0) {
+                    if (overlapX < overlapY) {
+                        pushX += dx > 0 ? overlapX : -overlapX;
+                    } else {
+                        pushY += dy > 0 ? overlapY : -overlapY;
+                    }
+                }
+            }
+        }
+    }
+    
+    // 应用推出力
+    if (stuckCount > 0 && (pushX !== 0 || pushY !== 0)) {
+        const maxPush = 5; // 限制推出速度
+        pushX = Phaser.Math.Clamp(pushX, -maxPush, maxPush);
+        pushY = Phaser.Math.Clamp(pushY, -maxPush, maxPush);
+        
+        this.x += pushX;
+        this.y += pushY;
+        
+        // 严重卡墙时重置速度
+        if (Math.abs(pushX) > 3 || Math.abs(pushY) > 3) {
+            body.setVelocity(pushX * 10, pushY * 10);
+        }
+    }
+}
+```
+
+### 关键设计要点
+
+1. **检测时机**：在每帧`update()`开始时检测
+2. **推出策略**：选择最短推出距离，避免瞬移
+3. **速度限制**：限制推出速度为5像素/帧，保持平滑
+4. **速度重置**：严重卡墙时重置速度，确保能够脱离
+
+## 配置化管理最佳实践
+
+### 集中配置系统
+
+所有游戏常量都应该集中在配置文件中管理：
+
+```typescript
+// src/game/config/AssetConfig.ts
+
+// 对象类型配置
+export const OBJECT_TYPES = {
+    PLAYER: 'player',
+    ENEMY: 'enemy',
+    COLLECTIBLE: 'collectible',
+    HAZARD: 'hazard',
+    GOAL: 'goal'
+} as const;
+
+// 图层配置
+export const TILEMAP_LAYERS = {
+    TERRAIN: 'Level1',      // 地形图层
+    OBJECTS: 'Objects',     // 对象图层
+    BACKGROUND: 'Background', // 背景图层
+    FOREGROUND: 'Foreground'  // 前景图层
+} as const;
+
+// 碰撞瓷砖配置
+export const COLLISION_TILES = {
+    TERRAIN_TILES: [1, 2]  // 可碰撞的地形瓷砖ID
+} as const;
+```
+
+### 使用配置的优势
+
+1. **易于维护**：所有常量在一处定义
+2. **类型安全**：TypeScript自动推断类型
+3. **避免魔法数字**：代码更易读
+4. **统一管理**：便于批量修改
+
+### 在代码中使用
+
+```typescript
+// 使用图层配置
+const layer = this.map.createLayer(TILEMAP_LAYERS.TERRAIN, allTilesets);
+layer.setCollision(COLLISION_TILES.TERRAIN_TILES);
+
+// 使用对象类型配置
+if (obj.type === OBJECT_TYPES.ENEMY) {
+    // 处理敌人对象
+}
+
+// 获取对象层
+const objectLayer = this.map?.getObjectLayer(TILEMAP_LAYERS.OBJECTS);
+```
+
 ## 总结
-每个游戏对象都经过精心设计，物理特性服务于游戏体验。通过Tilemap的对象层，可以灵活配置关卡，实现不同的游戏挑战。开发时注意坐标转换、碰撞设置和性能优化，确保游戏运行流畅。
+
+每个游戏对象都经过精心设计，物理特性服务于游戏体验。通过以下最佳实践确保游戏质量：
+
+1. **配置化管理**：所有常量集中配置，提高可维护性
+2. **防卡墙系统**：自动检测并修复角色卡墙问题
+3. **图层分离**：明确区分地形层、对象层等不同功能
+4. **类型安全**：充分利用TypeScript的类型系统
+
+通过Tilemap的对象层，可以灵活配置关卡，实现不同的游戏挑战。开发时注意坐标转换、碰撞设置和性能优化，确保游戏运行流畅。
